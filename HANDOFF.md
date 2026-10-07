@@ -52,6 +52,8 @@ model behind Auto captions. You can use it in the browser or as a native Windows
   - A Preferences window with all settings.
 - **Polish:** autosave, a command palette (Ctrl+K), a shortcuts sheet (?), and hover explainers on every control.
 - **Interface size** (50–200 %, View ▸ Interface size, Preferences ▸ Appearance, Ctrl+Alt+= / - / 0).
+- **Windows XP Dreamcore theme:** an XP desktop with 3D windows, working title-bar buttons, taskbar, Start menu, balloon tips
+  and its own welcome screen and Dream sound pack.
 - **Timeline mouse control:** the wheel zooms at the pointer (or scrolls, per Preferences), and pressing the wheel and
   dragging pans the video and audio timelines.
 - **Windows desktop app:**
@@ -60,8 +62,7 @@ model behind Auto captions. You can use it in the browser or as a native Windows
   - Autosave is flushed when the window closes.
 
 ### In progress
-- Nothing is half-done. The last task (Interface size, wheel zoom and middle-button panning) is finished and tested in
-  headless Chromium. **The Windows exe has not been rebuilt since** (the work was done in a Linux cloud session), so run
+- Nothing is half-done. The last task (the Windows XP Dreamcore theme) is finished and tested in headless Chromium. **The Windows exe has not been rebuilt since** (the work was done in a Linux cloud session), so run
   `build-desktop.bat` once on Windows.
 - `qa/harness.js` is a temporary QA script that runs every menu command in the browser preview. It isn't part of the app.
 
@@ -90,8 +91,7 @@ model behind Auto captions. You can use it in the browser or as a native Windows
   - **Rebuild the exe after changing any web files.**
 - The user (Mouad) wants polished, "10x" quality. Every control needs a hover explainer, which is the `tip:` attribute on elements. Write user-facing text in plain language.
 
-> **START HERE:** there is no open task. The latest finished work is **"Interface size, wheel zoom, middle-button pan"**
-> below.
+> **START HERE:** there is no open task. The latest finished work is **"Windows XP Dreamcore theme"** below.
 
 ## Earlier request — DONE (2026-10-07, second request of the day)
 "Make the Image section as feature-packed as Photoshop, add Camera Raw Filter with the same features, and add a local
@@ -196,7 +196,51 @@ speech-to-text model for auto-captioning videos." The user picked **Whisper Base
 - Exe: smoke-tested after the user closed their copy (live recording via the blob-URL AudioWorklet works under COEP; the xfer
   receivers are registered). The parked old build in `%TEMP%\claude\old-builds\` was deleted. The Desktop exe is current.
 
-## Latest request — DONE (2026-10-07, cloud session): Interface size, wheel zoom, middle-button pan
+## Latest request — DONE (2026-10-07, cloud session): Windows XP Dreamcore theme
+User: "make the Windows XP theme look exactly like Windows XP, everything … make two or three drafts". Three drafts were
+shown (Luna program window, every panel a window on the desktop, Dreamcore); the user picked **Dreamcore**, so the XP theme
+(id `xp`, name "Windows XP Dreamcore") is now only that look. The draft commit is in the history if the others are wanted.
+
+### Files
+- `js/core/xpshell.js` — builds the desktop while the theme is `xp` (`sync()` on the `theme` event; `teardown()` removes
+  everything):
+  - **Wallpaper:** `paintWalls()` paints the hill (transparent PNG, grass strokes, grain) and a cloud strip that tiles
+    sideways (no photo). `.xp-wall` stacks sky (CSS), clouds (`.xp-cloud-track` drifts with a transform animation),
+    hill and haze, behind `#main` (z-index 2).
+  - **Taskbar:** the old top bar, restyled. Brand = Start button (capture-phase click opens the Start menu), tabs = taskbar
+    buttons showing window titles (`.lbl[data-xp]`), tray icons + `.xp-clock`.
+  - **Windows:** every `.module > .panel` is a window. Its 32px top *border* is the title bar. Gradient, title and buttons
+    are background layers (`--xp-cap` is an SVG with the title text, per panel; `--xp-capbtns*` are the button strips in
+    each hover state). `capHit()` maps a click in the border to min / max / close, using `--xp-cap-h`, `--xp-btn-top`,
+    `--xp-btn-right` from the CSS.
+    - **Side panels** (`PANELS` kind `side`): minimize or close clicks the editor's own toggle button.
+    - **Core panels:** wobble and explain.
+    - **Maximize:** sets `.xp-maxed` (absolutely positioned below the main window, `grid-area: auto`).
+    - **Main window:** minimize = desktop (`html.xp-min`, desktop icons); maximize = `html.xp-tight` (saved in
+      `strata.xp.tight`); close = Turn Off Computer.
+  - **Also:** Start menu (`startMenu()`), Turn Off Computer (`turnOff()`, greys the screen), Ctrl+Esc opens Start, and the
+    active editor's taskbar button minimizes it, like XP.
+- `css/xp.css` — generated from a small Python template during the session, but now edited directly.
+  - **Tokens:** `--xp-*` (padding/gaps/extrusion tiers by screen size: ≥1040 px tall = full depth, ≤860 px = 26 px title
+    bars), `--grain`, cursors `--xp-arrow` / `--xp-hand`.
+  - **Rules:** taskbar, Start menu, Turn Off, desktop icons, Luna controls (menus, push buttons, trackbar thumb, check
+    boxes, tab controls, scrollbars with arrow buttons, combo boxes), dialogs, tooltips, balloon toasts (`.toast` with a
+    tail and a "Strata Studio" title), Explorer task-pane sections, Paint tool box and colour wells, and the windows.
+  - **Theme effects off / reduce motion:** stop the cloud drift and hide the haze.
+- `js/welcome/xp.js` — the Dreamcore welcome screen (see the welcome list below).
+- `js/core/sound.js` — new **Dream** pack (`dream`, the XP theme's pack): slowed tones routed to a long dark `haze` reverb
+  (`o.haze`, `makeHaze()`), balanced against Soft with `TRIM.dream`.
+
+### Tested
+- Real mouse at 1600×900, 1366×768 and 150 % interface size:
+  - caption hover states, maximize/restore (incl. double-click), hiding and restoring side panels;
+  - core-window wobble and the Tools close button;
+  - tight mode, minimize to desktop and back from the taskbar;
+  - clip dragging inside a window, the welcome screen's buttons, and theme switching away and back.
+- Every menu command in all three editors with the theme on: no errors.
+- Screenshots at 1920×1080, 1600×900 and 1366×768.
+
+## Earlier request — DONE (2026-10-07, cloud session): Interface size, wheel zoom, middle-button pan
 User: "scale the UI of the whole program up or down with a slider … the scroll wheel zooms the video and audio timelines …
 press the scroll wheel to move through the timeline", with a QA pass so there are no bugs.
 
@@ -334,8 +378,9 @@ Paper and all those — creative, not generic", then "make each welcome screen v
   LUFS, raw/edited photo split), rotating tips, action tiles.
 - **aero** Frutiger Aero: sky, sun glare, flowing light swooshes, glossy hill, soap bubbles; three glossy orbs with real
   `-webkit-box-reflect` reflections; Aero glass "Welcome Center" panel; orbs pop into bubbles when chosen.
-- **xp** XP log-on screen: boot screen with moving blue blocks, "To begin, click your editor", editors as user accounts with
-  SVG account pictures, "Loading your personal settings…" → big italic "welcome" when chosen, red "Continue" power button.
+- **xp** (Dreamcore, since the cloud session): the dream desktop (sky, drifting clouds, painted hill from `App.xp.walls()`),
+  ghost 3D windows in the sky, a giant striped dialog "What do you want to make today?" with "Video." "Audio." "Image." buttons,
+  a small "Are you sure you want to waste your life away? [No.]" dialog (No. = continue), and an XP taskbar with the links.
 - **skeuo** "Strata SS-3" console on stitched leather: embossed title, brushed-metal plate with screws, scrolling dot-matrix
   LCD, analog VU meter, illuminated pads, rotary selector (wheel / drag / arrows), bat toggle switches for the actions.
 - **oled** "Orbit": particle-logo sun (scatters from the mouse) + three planets on tilted orbits on true black; hover slows
