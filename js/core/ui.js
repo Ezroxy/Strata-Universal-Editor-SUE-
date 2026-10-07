@@ -158,6 +158,9 @@ App.toast = (msg, type = '', ms = 2600, action) => {
 
 /* ---------- modal ---------- */
 App.modalCount = 0;
+// open windows, oldest first: only the top one answers Enter / Esc (a prompt opened from inside Camera Raw or
+// Preferences must not also press that window's OK button or close it)
+const modalStack = [];
 App.modal = ({ title, body, buttons = [], width = 420, onClose, pad = false, clear = false, left, cls = '', icon: ic }) => {
   const back = h('div', { class: 'modal-back' + (clear ? ' clear' : '') });
   const bodyEl = h('div', { class: 'modal-body' + (pad ? ' pad' : '') }, body);
@@ -169,6 +172,8 @@ App.modal = ({ title, body, buttons = [], width = 420, onClose, pad = false, cle
     box.classList.add('closing'); back.classList.add('closing');
     setTimeout(() => back.remove(), 140);
     App.modalCount--;
+    const si = modalStack.indexOf(box);
+    if (si >= 0) modalStack.splice(si, 1);
     document.removeEventListener('keydown', onKey, true);
     sfx('close');
     onClose && onClose(result);
@@ -188,6 +193,7 @@ App.modal = ({ title, body, buttons = [], width = 420, onClose, pad = false, cle
   back.append(box);
   if (!clear) back.addEventListener('pointerdown', e => { if (e.target === back) close(null); });
   const onKey = e => {
+    if (modalStack[modalStack.length - 1] !== box || e.defaultPrevented) return;
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(null); }
     else if (e.key === 'Enter' && primary && !e.target.matches('textarea, button')) { e.preventDefault(); primary.click(); }
   };
@@ -203,6 +209,7 @@ App.modal = ({ title, body, buttons = [], width = 420, onClose, pad = false, cle
   });
   document.body.append(back);
   App.modalCount++;
+  modalStack.push(box);
   hideTip();
   sfx('open');
   setTimeout(() => { const f = box.querySelector('[autofocus], input.field, textarea'); f && f.focus(); f && f.select && f.select(); }, 30);

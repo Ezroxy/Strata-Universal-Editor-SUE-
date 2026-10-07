@@ -265,6 +265,8 @@ function imageSec() {
   ];
 }
 
+let fontsRender = null;   // the open Fonts page re-renders when fonts are added or removed (one listener, not one per visit)
+App.on('fonts-changed', () => fontsRender && fontsRender());
 function fonts() {
   const sample = h('input', { class: 'field wide', value: 'Strata Studio — The quick brown fox 0123', title: 'Preview text', tip: 'Type anything to preview it in every font.' });
   sample.addEventListener('keydown', e => e.stopPropagation());
@@ -289,7 +291,7 @@ function fonts() {
   };
   sample.addEventListener('input', () => list.querySelectorAll('.font-sample').forEach(s => { s.textContent = sample.value || 'Aa'; }));
   render();
-  App.on('fonts-changed', () => { if (list.isConnected) render(); });
+  fontsRender = () => { if (list.isConnected) render(); };
   return [
     group('Fonts', note('Fonts available in the video title tool and the image text tool. Preview any text below.'), sample,
       h('div', { class: 'pref-inline' }, btn({ icon: 'plus', label: 'Add font files…', cls: 'primary txt sm', title: 'Add fonts', tip: 'Import your own .ttf, .otf, .woff or .woff2 fonts. They are stored in this browser (or the desktop app) and work offline.', onClick: async () => {

@@ -609,6 +609,48 @@ I.subjectDialog = (subject = true) => {
   run();
 };
 
+/** Edit ▸ Content-aware fill: remove whatever is inside the selection and rebuild it from the surroundings. */
+I.contentAwareFill = () => {
+  const L = I.active(), D = I.doc;
+  if (!I.sel) return App.toast('First select what should disappear (Lasso or Rectangle select, a little larger than the object), then run Content-aware fill', 'warn', 6000);
+  if (L.locked) return App.toast('This layer is locked', 'warn');
+  if (I.maskEdit) return App.toast('Content-aware fill works on pixels — click the layer thumbnail (not the mask) first', 'warn');
+  I.settle(); I.flushDev();
+  const b = I.sel.bounds, big = b.w * b.h > D.w * D.h * 0.3;
+  I.busy(true, 'Content-aware fill…');
+  setTimeout(() => {
+    try {
+      if (F.heal(L.canvas, I.sel.mask, Math.max(20, Math.min(b.w, b.h) / 3))) {
+        I.ensurePixels(L, true); I.dirty(L); I.pushHistory('Content-aware fill', 'bandage');
+        App.toast(big ? 'Filled — large areas are hard to rebuild; try smaller selections one at a time for cleaner results' : 'Filled from the surrounding area — Ctrl+Z undoes it', big ? 'warn' : 'ok', big ? 6000 : 3000);
+      } else App.toast('The selection is empty — nothing to fill', 'warn');
+    } finally { I.busy(false); }
+  }, 30);
+};
+/** Layer ▸ Remove background: hides a plain background with a layer mask (non-destructive — paint the mask to fix it up). */
+I.removeBackground = () => {
+  const L = I.active(), D = I.doc;
+  if (L.locked) return App.toast('This layer is locked', 'warn');
+  if (L.mask) return App.toast('This layer already has a mask — delete or apply it first (Layer ▸ Layer mask)', 'warn', 5000);
+  I.settle(); I.flushDev();
+  I.busy(true, 'Finding the background…');
+  setTimeout(() => {
+    try {
+      const bg = backgroundMask(L.canvas, 30);
+      let n = 0; for (let i = 0; i < bg.length; i++) n += bg[i];
+      const share = n / bg.length;
+      if (share < 0.02 || share > 0.97) return App.toast(share < 0.02 ? 'Couldn’t find a plain background around the edges — try Select ▸ Select subject and adjust the tolerance' : 'The whole layer looks like background — try Select ▸ Select subject and lower the tolerance', 'warn', 6500);
+      const m = whiteMask(D.w, D.h), c = m.getContext('2d');
+      c.globalCompositeOperation = 'destination-out'; c.drawImage(I.maskCanvas(bg, D.w, D.h), 0, 0);
+      L.mask = F.maskBlur(m, 0.8); L.maskOn = true; bumpM(L);
+      I.maskEdit = false; I.maskView = false;
+      I.compositeNow(); I.thumbsSoon(); I.layersUI(); optionsUI();
+      I.pushHistory('Remove background', 'mask');
+      App.toast('Background hidden with a layer mask — paint the mask white to bring parts back, black to hide more', 'ok', 6000, { label: 'Edit mask', fn: () => I.editMask(true) });
+    } finally { I.busy(false); }
+  }, 30);
+};
+
 /* ---------- canvas-level operations ---------- */
 I.resizeCanvas = (w, hh, ox, oy, label, fill) => {
   I.settle(); I.flushDev();
@@ -929,6 +971,7 @@ function setupViewport() {
       { label: 'Crop to selection', icon: 'crop', disabled: !I.sel, tip: 'Trims the canvas to the selection.', action: I.cropToSel },
       { label: 'Fill with primary color', icon: 'bucket', disabled: !I.sel, tip: 'Fills the selection with the primary color.', action: () => I.fillSel() },
       { label: 'Delete selected pixels', icon: 'trash', key: 'Del', disabled: !I.sel, tip: 'Erases the selected area on the active layer.', action: () => I.clearSel() },
+      { label: 'Content-aware fill', icon: 'bandage', key: 'Shift+F5', disabled: !I.sel, tip: 'Removes what is selected by rebuilding it from the surroundings.', action: I.contentAwareFill },
     ]);
   });
   vp.addEventListener('wheel', e => {
@@ -1720,6 +1763,7 @@ function layerMenuItems() {
     { label: 'Delete layer', icon: 'trash', tip: 'Remove the current layer.', action: delLayer },
     { sep: true },
     { label: 'Layer mask', icon: 'mask', tip: 'Hide parts of a layer without erasing them.', sub: maskMenuItems },
+    { label: 'Remove background', icon: 'select', disabled: !!(L && L.mask), tip: 'One click: finds the plain background around your subject (product shots, portraits on a backdrop) and hides it with a layer mask. Nothing is erased — paint the mask to fix the edges.', action: I.removeBackground },
     { label: 'Edit text', icon: 'text', disabled: !(L && L.text), tip: 'Re-open the text for typing and styling.', action: () => L.text && I.startText(L.text.x, L.text.y, L) },
     { label: 'Rasterize text', icon: 'grid', disabled: !(L && L.text), tip: 'Convert text into ordinary pixels.', action: () => { I.ensurePixels(L, true); I.pushHistory('Rasterize text', 'text'); } },
     { sep: true },
@@ -1766,6 +1810,7 @@ function menus() {
       { label: 'Delete selected pixels', icon: 'trash', key: 'Del', tip: 'Erase the selection (or the whole layer).', action: () => I.clearSel() },
       { label: 'Fill with primary color', icon: 'bucket', key: 'Alt+Backspace', tip: 'Fill the selection (or layer) with the primary color.', action: () => I.fillSel() },
       { label: 'Fill with secondary color', icon: 'bucket', key: 'Ctrl+Backspace', tip: 'Fill the selection (or layer) with the secondary color.', action: () => I.fillSel(I.secondary) },
+      { label: 'Content-aware fill', icon: 'bandage', key: 'Shift+F5', disabled: !I.sel, tip: 'Makes whatever is inside the selection disappear by rebuilding it from the area around it — remove people, wires, logos or dust. Select a little more than the object.', action: I.contentAwareFill },
       { sep: true },
       { label: 'Free transform', icon: 'transform', key: 'Ctrl+T', tip: 'Scale, rotate, flip and move the layer (or selection) with handles.', action: () => I.setTool('transform') },
     ] },
@@ -2147,7 +2192,7 @@ App.modules.image = {
         else if (I.tool === 'crop') T.crop.apply();
         else if (!F.isDefault(I.dev)) I.devApply();
       },
-      'delete': () => I.clearSel(), 'backspace': () => I.clearSel(), 'alt+backspace': () => I.fillSel(), 'ctrl+backspace': () => I.fillSel(I.secondary),
+      'delete': () => I.clearSel(), 'backspace': () => I.clearSel(), 'shift+f5': I.contentAwareFill, 'alt+backspace': () => I.fillSel(), 'ctrl+backspace': () => I.fillSel(I.secondary),
       'ctrl+c': () => I.copy(), 'ctrl+shift+c': () => I.copy(true), 'ctrl+x': () => I.copy(false, true),
       'ctrl+j': () => layerViaCopy(false), 'ctrl+shift+j': () => layerViaCopy(true), 'ctrl+shift+n': newLayerCmd, 'ctrl+e': mergeDown, 'ctrl+shift+e': mergeVisible,
       'ctrl+]': () => moveLayer(1), 'ctrl+[': () => moveLayer(-1),
@@ -2173,7 +2218,7 @@ App.modules.image = {
   shortcuts: [
     ['Tools', [['V', 'Move (click text to pick it)'], ['Ctrl + T', 'Free transform'], ['M / Shift+M', 'Rectangle / ellipse select'], ['L', 'Lasso'], ['W', 'Magic wand'], ['C', 'Crop'], ['B', 'Brush'], ['P', 'Pencil'], ['E', 'Eraser'], ['G / Shift+G', 'Fill / gradient'], ['U', 'Shapes'], ['T', 'Text (click text to edit)'], ['J', 'Healing brush'], ['S', 'Clone stamp'], ['R', 'Retouch brush'], ['I', 'Eyedropper'], ['H / Space', 'Hand (pan)'], ['Z', 'Zoom']]],
     ['Painting & masks', [['[ / ]', 'Smaller / bigger brush'], ['X', 'Swap colors'], ['D', 'Default colors'], ['Right button', 'Paint with secondary color'], ['Alt + click', 'Pick color (paint tools)'], ['Shift + click', 'Straight line'], ['Alt + click (clone)', 'Set clone source'], ['\\', 'Red overlay while editing a mask'], ['Alt + click mask', 'View the mask itself']]],
-    ['Selection & layers', [['Ctrl + A / D', 'Select all / deselect'], ['Ctrl + Shift + D', 'Reselect'], ['Ctrl + Shift + I', 'Invert selection'], ['Shift + F6', 'Feather selection'], ['Del', 'Delete selected pixels'], ['Alt / Ctrl + Backspace', 'Fill with primary / secondary'], ['Ctrl + C / X / V', 'Copy / cut / paste'], ['Ctrl + J', 'Layer via copy'], ['Ctrl + Shift + N', 'New layer'], ['Ctrl + E', 'Merge down'], ['Ctrl + [ / ]', 'Move layer down / up'], ['Ctrl + click thumb', 'Select layer contents'], ['Arrows', 'Nudge (Move / Transform)']]],
+    ['Selection & layers', [['Ctrl + A / D', 'Select all / deselect'], ['Ctrl + Shift + D', 'Reselect'], ['Ctrl + Shift + I', 'Invert selection'], ['Shift + F6', 'Feather selection'], ['Del', 'Delete selected pixels'], ['Shift + F5', 'Content-aware fill'], ['Alt / Ctrl + Backspace', 'Fill with primary / secondary'], ['Ctrl + C / X / V', 'Copy / cut / paste'], ['Ctrl + J', 'Layer via copy'], ['Ctrl + Shift + N', 'New layer'], ['Ctrl + E', 'Merge down'], ['Ctrl + [ / ]', 'Move layer down / up'], ['Ctrl + click thumb', 'Select layer contents'], ['Arrows', 'Nudge (Move / Transform)']]],
     ['Image & view', [['Ctrl + Z / Y', 'Undo / redo'], ['Ctrl + L / M / U', 'Levels / Curves / Hue-Sat'], ['Ctrl + I', 'Invert colors'], ['Enter', 'Apply crop / transform / adjustments'], ['Ctrl + 0 / 1', 'Fit / 100%'], ['Ctrl + wheel', 'Zoom at cursor'], ["Ctrl + ' / Ctrl + R", 'Grid / rulers'], ['Ctrl + S', 'Save project'], ['Ctrl + Shift + S', 'Export image'], ['Ctrl + O', 'Open image (new tab)']]],
   ],
 };

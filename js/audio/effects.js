@@ -125,6 +125,38 @@ A.FX = [
       App.toast(`Measured ${L.integrated.toFixed(1)} LUFS → ${p.target} LUFS (${(p.target - L.integrated >= 0 ? '+' : '') + (p.target - L.integrated).toFixed(1)} dB)`, 'ok', 3500);
       return out;
     } },
+  { id: 'leveler', cat: 'Volume & dynamics', name: 'Voice leveler', icon: 'lufs', tip: 'Rides the volume for you: quiet sentences come up, loud ones go down, so a voice stays at one even level — like a sound engineer on the fader. Pauses and background noise are left alone.',
+    params: [
+      { id: 'target', label: 'Target level', min: -32, max: -10, step: 0.5, def: -20, unit: 'dB', tip: 'The average speaking level to aim for. −20 dB suits most voice recordings; louder targets need a limiter afterwards.' },
+      { id: 'boost', label: 'Max boost', min: 0, max: 24, step: 0.5, def: 10, unit: 'dB', tip: 'The most a quiet passage may be raised.' },
+      { id: 'cut', label: 'Max cut', min: 0, max: 24, step: 0.5, def: 10, unit: 'dB', tip: 'The most a loud passage may be turned down.' },
+      { id: 'speed', label: 'Speed', type: 'select', def: 'medium', options: [['slow', 'Slow (gentle, musical)'], ['medium', 'Medium (speech)'], ['fast', 'Fast (word by word)']], tip: 'How quickly the level follows the voice. Faster evens out more but can sound pumpy.' },
+      { id: 'floor', label: 'Ignore below', min: -70, max: -25, step: 1, def: -48, unit: 'dB', tip: 'Anything quieter than this is treated as a pause or background noise and is not boosted.' }],
+    presets: { 'Podcast / interview': { target: -20, boost: 10, cut: 10, speed: 'medium', floor: -48 }, 'Gentle': { target: -20, boost: 6, cut: 6, speed: 'slow', floor: -50 }, 'Strong (very uneven recording)': { target: -19, boost: 18, cut: 14, speed: 'fast', floor: -46 } },
+    run: (chs, sr, p) => {
+      const n = chs[0].length, hop = Math.max(1, Math.round(sr * 0.01)), nb = Math.ceil(n / hop);
+      const win = Math.max(1, Math.round({ slow: 1.6, medium: 0.7, fast: 0.3 }[p.speed] / 0.01));
+      // mean square per 10 ms block (channels folded), then a centred moving average over the speed window
+      const ms = new Float64Array(nb);
+      for (let b = 0; b < nb; b++) { let s = 0; const s0 = b * hop, s1 = Math.min(n, s0 + hop); for (const c of chs) for (let i = s0; i < s1; i++) s += c[i] * c[i]; ms[b] = s / ((s1 - s0) * chs.length); }
+      const pre = new Float64Array(nb + 1); for (let b = 0; b < nb; b++) pre[b + 1] = pre[b] + ms[b];
+      const gainDb = new Float32Array(nb), floor = p.floor;
+      let g = 0;
+      for (let b = 0; b < nb; b++) {
+        const a = Math.max(0, b - (win >> 1)), z = Math.min(nb, a + win), lvl = 10 * Math.log10((pre[z] - pre[a]) / Math.max(1, z - a) + 1e-12);
+        // only speech-level material moves the fader; in pauses it drifts gently back towards 0 dB
+        const want = lvl > floor ? Math.max(-p.cut, Math.min(p.boost, p.target - lvl)) : g * 0.97;
+        g += (want - g) * (want < g ? 0.35 : 0.12);
+        gainDb[b] = g;
+      }
+      const out = chs.map(c => new Float32Array(n));
+      for (let b = 0; b < nb; b++) {
+        const g0 = App.dbToGain(gainDb[b]), g1 = App.dbToGain(gainDb[Math.min(nb - 1, b + 1)]), s0 = b * hop, s1 = Math.min(n, s0 + hop);
+        for (let i = s0; i < s1; i++) { const k = g0 + (g1 - g0) * (i - s0) / hop; for (let c = 0; c < chs.length; c++) out[c][i] = chs[c][i] * k; }
+      }
+      // catch the odd peak the boost pushed too high
+      return A.peakOf(out) > db(-1) ? A.FX.find(f => f.id === 'limiter').run(out, sr, { input: 0, ceiling: -1, release: 60 }) : out;
+    } },
   { id: 'duck', cat: 'Volume & dynamics', name: 'Auto-duck', icon: 'duck', needsControl: true, tip: 'Automatically lowers this track (e.g. music) whenever another track (e.g. a voice-over) is speaking — the classic podcast / YouTube mix.',
     params: [
       { id: 'control', label: 'Listen to', type: 'track', tip: 'The track whose sound triggers the ducking — usually the voice.' },
@@ -291,6 +323,31 @@ A.FX = [
     run: (chs, sr, p) => {
       if (!A.noiseProfile) throw new Error('Capture a noise profile first: select a few seconds of pure noise and press “Capture noise profile”.');
       return Promise.all(chs.map(c => D.work('noiseReduce', c, A.noiseProfile, { reduction: p.reduction, sensitivity: p.sensitivity, smoothing: p.smoothing })));
+    } },
+  { id: 'deess', cat: 'Repair', name: 'De-esser', icon: 'tone', tip: 'Tames harsh “s”, “sh” and “t” sounds that hiss or whistle in a voice — only while they happen, so the rest of the voice keeps its brightness.',
+    params: [
+      { id: 'freq', label: 'Frequency', min: 3000, max: 10000, step: 50, def: 5500, unit: 'Hz', tip: 'Where the hiss lives. Lower for deeper voices (≈4.5 kHz), higher for bright voices (≈7 kHz).' },
+      { id: 'threshold', label: 'Threshold', min: -50, max: -5, step: 0.5, def: -28, unit: 'dB', tip: 'How loud the hiss must be before it is turned down. Lower = more de-essing.' },
+      { id: 'reduction', label: 'Max reduction', min: 2, max: 24, step: 0.5, def: 10, unit: 'dB', tip: 'The most the hissing sounds are turned down.' }],
+    presets: { 'Gentle': { freq: 5500, threshold: -24, reduction: 6 }, 'Medium': { freq: 5500, threshold: -28, reduction: 10 }, 'Strong': { freq: 5000, threshold: -34, reduction: 16 } },
+    run: (chs, sr, p) => {
+      // split off the sibilance band with a zero-phase high-pass (run forwards, then backwards — so the band lines up exactly
+      // with the original and subtracting part of it really removes hiss), follow its level, and turn it down when it's too loud
+      const w0 = 2 * Math.PI * Math.min(p.freq, sr * 0.45) / sr, cw = Math.cos(w0), al = Math.sin(w0) / (2 * 0.7071), a0 = 1 + al;
+      const b0 = (1 + cw) / 2 / a0, b1 = -(1 + cw) / a0, b2 = b0, a1 = -2 * cw / a0, a2 = (1 - al) / a0;
+      const hp = x => { const y = new Float32Array(x.length); let x1 = 0, x2 = 0, y1 = 0, y2 = 0; for (let i = 0; i < x.length; i++) { const v = x[i], o = b0 * v + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2; x2 = x1; x1 = v; y2 = y1; y1 = o; y[i] = o; } return y; };
+      const zeroPhase = x => hp(hp(x).reverse()).reverse();
+      const bands = chs.map(zeroPhase), n = chs[0].length;
+      const ka = 1 - Math.exp(-1 / (0.0015 * sr)), kr = 1 - Math.exp(-1 / (0.06 * sr)), thr = db(p.threshold), maxR = p.reduction;
+      const g = new Float32Array(n);
+      let env = 0;
+      for (let i = 0; i < n; i++) {
+        let m = 0; for (const b of bands) { const v = Math.abs(b[i]); if (v > m) m = v; }
+        env += (m - env) * (m > env ? ka : kr);
+        const over = env > thr ? 20 * Math.log10(env / thr) : 0;   // dB above the threshold, compressed 4:1
+        g[i] = over > 0 ? db(-Math.min(maxR, over * 0.75)) : 1;
+      }
+      return chs.map((c, ci) => { const b = bands[ci], o = new Float32Array(n); for (let i = 0; i < n; i++) o[i] = c[i] - b[i] * (1 - g[i]); return o; });
     } },
   { id: 'dc', cat: 'Repair', name: 'Remove DC offset', icon: 'target', instant: true, tip: 'Re-centers a waveform that sits above or below zero.',
     run: chs => chs.map(c => { let s = 0; for (let i = 0; i < c.length; i++) s += c[i]; const m = s / c.length; return c.map(v => v - m); }) },

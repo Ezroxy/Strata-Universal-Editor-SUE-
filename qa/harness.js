@@ -70,7 +70,7 @@ Q.setup = {
     if (!I.doc || !I.doc.name.startsWith('QA')) {
       I.newDoc(800, 500, '#ffffff', 'QA');
       const c = I.active().ctx; const g = c.createLinearGradient(0, 0, 800, 500); g.addColorStop(0, '#5aa0ff'); g.addColorStop(1, '#ffd27a'); c.fillStyle = g; c.fillRect(0, 0, 800, 500);
-      c.fillStyle = '#b8473a'; c.beginPath(); c.arc(400, 260, 120, 0, 7); c.fill(); I.pushHistory && I.pushHistory('QA paint', 'brush');
+      c.fillStyle = '#b8473a'; c.beginPath(); c.arc(400, 260, 120, 0, 7); c.fill(); I.dirty(I.active()); I.pushHistory && I.pushHistory('QA paint', 'brush');
     }
   },
 };

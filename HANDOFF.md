@@ -32,16 +32,19 @@ model behind Auto captions. You can use it in the browser or as a native Windows
   - Keyframes, chroma key and titles.
   - Auto captions with local Whisper (word timestamps, SRT/VTT import and export).
   - Silence cutter.
+  - Fade handles on clips, loudness normalizing (−14 / −16 / −23 LUFS) and YouTube chapters from markers.
   - MP4 / WebM / GIF export.
 - **Audio:**
   - Live recording with a real-time waveform.
   - 25+ effects, noise reduction and LUFS loudness.
   - Auto-duck, envelopes and markers.
+  - Voice leveler, de-esser, and export of each region as its own file.
 - **Image:**
   - Layers, masks and selections.
   - A Photoshop-style Filter menu (68 filters), Filter Gallery and Liquify.
   - A full Camera Raw filter.
-  - Healing brush, clone and text.
+  - Healing brush, clone, content-aware fill and remove background.
+  - Text with outline, shadow, letter / line spacing and style presets.
 - **Drag and drop between the three editors:** audio → video, image → video, frames → image, and more.
 - **15 themes, each with its own animated welcome screen:**
   - Themes: Terminal, Frutiger Aero, Windows XP, Windows 98, Paper, Film Noir, Synthwave, Grove Street and more.
@@ -54,7 +57,9 @@ model behind Auto captions. You can use it in the browser or as a native Windows
   - Autosave is flushed when the window closes.
 
 ### In progress
-- Nothing is half-done. The last task (one welcome screen per theme) is finished and tested in the browser and the exe.
+- Nothing is half-done. The last task (a QA pass plus new features in all three editors) is finished and tested in
+  headless Chromium. **The Windows exe has not been rebuilt since** (the work was done in a Linux cloud session), so run
+  `build-desktop.bat` once on Windows.
 - `qa/harness.js` is a temporary QA script that runs every menu command in the browser preview. It isn't part of the app.
 
 ### What's next (ideas, not started)
@@ -63,6 +68,9 @@ model behind Auto captions. You can use it in the browser or as a native Windows
   breaks the canvas pointer maths.
 - Subject, sky and depth masks in Camera Raw are heuristics. A small local segmentation model would make them much better.
 - Cross-platform desktop builds (macOS / Linux). wry and tao support them, but only Windows has been built and tested.
+- Smaller ideas from the QA pass: LUT (.cube) import for video and Camera Raw, a de-click / de-clip repair effect,
+  speed ramps (speed keyframes) on video clips, and "Remove background" with a real segmentation model instead of the
+  colour-distance heuristic.
 - Ask the user what they want next. They value creative, polished, "10x" work with plain-language UI text.
 
 ---
@@ -81,7 +89,7 @@ model behind Auto captions. You can use it in the browser or as a native Windows
   - **Rebuild the exe after changing any web files.**
 - The user (Mouad) wants polished, "10x" quality. Every control needs a hover explainer, which is the `tip:` attribute on elements. Write user-facing text in plain language.
 
-> **START HERE:** there is no open task. The latest finished work is **"One welcome screen per theme"** below.
+> **START HERE:** there is no open task. The latest finished work is **"QA pass + new features"** below.
 
 ## Earlier request — DONE (2026-10-07, second request of the day)
 "Make the Image section as feature-packed as Photoshop, add Camera Raw Filter with the same features, and add a local
@@ -186,7 +194,67 @@ speech-to-text model for auto-captioning videos." The user picked **Whisper Base
 - Exe: smoke-tested after the user closed their copy (live recording via the blob-URL AudioWorklet works under COEP; the xfer
   receivers are registered). The parked old build in `%TEMP%\claude\old-builds\` was deleted. The Desktop exe is current.
 
-## Latest request — DONE (2026-10-07, sixth session): one welcome screen PER THEME
+## Latest request — DONE (2026-10-07, cloud session): QA pass + new features
+User: "Do a round of QA and testing … full read of the whole codebase. Squash any bugs, and add features you think the
+image, audio and video editors should have." Done in a Claude Code cloud session (Linux, headless Chromium) on branch
+`claude/handoff-continuation-h2cb0d`. Commits: "Fix bugs found in a full QA pass", "Remove silences: …", then the
+features commit.
+
+### Bugs fixed
+- **Dialogs (`js/core/ui.js`):** a `modalStack` means only the top-most modal answers Enter / Esc. Before, Enter in a
+  prompt opened from Camera Raw (Presets ▸ Create) also pressed Camera Raw's OK, and Esc closed the parent window too.
+- **Video:**
+  - "Color" in the media bin used to overwrite 5 s of footage on the bottom track. `O.addColor` now uses
+    `V.freeVideoTrack` (and commits first).
+  - Audio-only .webm / .mp4 files import as audio (`importFiles` checks `videoWidth`).
+  - Closing the Exporting window cancels the export (`runJob` `finished` flag + `onClose`).
+  - Detach audio keeps volume keyframes, mute and pitch; freeze frame waits for a decoded frame; the drop preview uses
+    the still-length setting.
+- **Audio:**
+  - Remove silences in auto mode used to delete *everything* when the pauses were digital silence (−120 dB frames
+    pulled the floor estimate down). Fixed in `D.detectSilence` (`js/core/dsp.js`).
+  - An effect that fails part-way is still undoable; track move / colour and marker colour now commit.
+- **Image:** tool name readable in the XP / Classic 98 options bar (`css/themes.css`); the workflow bar fits at 1280 px.
+- **Layout:** the audio top bar fits one row from ~1500 px (was ~1700 px).
+- **Core:** DSP worker crash rejects pending jobs; Preferences ▸ Fonts no longer adds a listener per visit;
+  `server.js` survives malformed URLs (400) and the path check is `root + path.sep`.
+
+### New features
+- **Video (`js/video/timeline.js`):**
+  - *Fade handles:* small knobs (`.c-fade.in/.out`) on the top corners of every audible clip. Drag to set
+    `fadeIn` / `fadeOut`, double-click to remove (`startFade`). Hidden when the clip is narrower than 44 px.
+  - *Normalize loudness* (`O.normalizeLoudness(target, clips)`): Clip menu, clip right-click and a "Normalize" button in
+    the Inspector's Audio section. Targets −14 (YouTube), −16 (podcast), −23 LUFS (broadcast). Boost capped at +12 dB
+    and peaks at −1 dBFS; the toast warns when a clip couldn't reach the target.
+  - *Chapters from markers* (`O.chapters()`): File / Timeline menus and ruler right-click. Builds a YouTube chapter
+    list (adds "0:00 Intro" when needed, warns about < 3 chapters or chapters < 10 s), with Copy and Download .txt.
+- **Audio:**
+  - *Voice leveler* (`leveler` in `js/audio/effects.js`, Volume & dynamics): rides the gain of speech towards a target
+    level (10 ms blocks, moving window, smoothed gain; limiter at the end if peaks pass −1 dB).
+  - *De-esser* (`deess`, Repair): zero-phase high-passed band + envelope follower. Zero-phase matters: a normal biquad
+    shifted the band's phase and the subtraction made hiss *louder*.
+  - *Export regions as files* (`A.exportRegions()`): File menu and the marker menu. One file per region marker,
+    WAV 16/24, M4A or Opus, stereo or mono, named `<project> - 01 <label>.ext`.
+- **Image:**
+  - *Content-aware fill* (`I.contentAwareFill`): Edit menu, viewport right-click, Shift+F5. Fills the selection from
+    the surroundings.
+  - `F.heal` (`js/image/filters.js`) got a much better patch search (sparse ring sample, dense coarse grid with early-out,
+    pixel refinement, overlap check). This also improves the Healing brush.
+  - *Remove background* (`I.removeBackground`, Layer menu): adds a layer mask from `backgroundMask` (colour distance to
+    the border). Heuristic, so it refuses when < 2 % or > 97 % of the image looks like background.
+  - *Text styles* (`js/image/tools.js`): outline (colour + width), shadow (soft / hard / glow), letter spacing and line
+    spacing, plus presets (Clean, Meme, Soft shadow, Neon) in a "Style" window from the Text options bar
+    (`I.textStyleWin`). The keys live in `TEXT_KEYS` / `TEXT_DEF`, so old text layers still render.
+
+### How it was tested
+- Every menu command in all three editors via `qa/harness.js` (`QA.applyMode = true; QA.sweep('video'|'audio'|'image')`
+  → `bad: []`, `errors: []`), key sweeps, mouse drags, export (MP4 / WebM / GIF / WAV / M4A / Opus, re-imported),
+  project save → open round trips, autosave across a reload, fake-mic recording, all 15 welcome screens, every
+  Preferences page and Whisper captions.
+- Headless runner: Playwright with the preinstalled Chromium (`/opt/pw-browsers`), `node server.js` on 5178, a script
+  per test that `page.evaluate`s against `window.App`. Headless Chromium runs the AudioContext at 44.1 kHz.
+
+## Earlier request — DONE (2026-10-07, sixth session): one welcome screen PER THEME
 User: "the startup menu should go with the theme you last chose … Terminal greenish, Frutiger Aero something Aero … XP, 98,
 Paper and all those — creative, not generic", then "make each welcome screen very impressive, you have creative freedom".
 **Shown at every start now:** the `welcome` setting defaults to `'always'`, and older saves that had the old default
@@ -360,3 +428,6 @@ snapDefault rippleDefault stillDur audioView zeroSnapDefault. User fonts: Indexe
 - After web changes, rebuild the desktop exe with `build-desktop.bat` (embeds `vendor/` and `models/` too; ~110 MB output).
 - `requestAnimationFrame` doesn't fire while the pane is hidden: kick renders manually in tests (e.g. `I.cameraRaw._debug.requestRender()`).
 - For long or complex shell edits write a Python patch script to the scratchpad and run it — heredocs with mixed quotes break.
+- **Line endings:** the repo mixes CRLF files (`index.html`, `css/app.css`, `js/core/ui.js`, `HANDOFF.md`, …) and LF files.
+  Keep each file's ending. A Python script that opens files in text mode silently converts CRLF to LF and turns a small
+  diff into thousands of changed lines; open them with `newline=''` instead.

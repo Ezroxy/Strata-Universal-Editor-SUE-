@@ -231,7 +231,8 @@ O.detachAudio = (cs = selClips()) => {
   for (const c of cs) {
     let tr = V.tracks.find(t => t.type === 'audio' && !t.locked && !V.clips.some(k => k.trackId === t.id && k.start < c.start + c.dur - EPS && k.start + k.dur > c.start + EPS));
     if (!tr) tr = V.addTrack('audio');
-    const a = V.makeClip({ kind: 'audio', mediaId: c.mediaId, trackId: tr.id, start: c.start, dur: c.dur, in: c.in, speed: c.speed, volume: c.volume, pan: c.pan, fadeIn: c.fadeIn, fadeOut: c.fadeOut });
+    const a = V.makeClip({ kind: 'audio', mediaId: c.mediaId, trackId: tr.id, start: c.start, dur: c.dur, in: c.in, speed: c.speed, keepPitch: c.keepPitch, volume: c.volume, pan: c.pan, fadeIn: c.fadeIn, fadeOut: c.fadeOut, muted: c.muted,
+      kf: V.hasKf(c, 'volume') ? { volume: JSON.parse(JSON.stringify(c.kf.volume)) } : {} });   // the sound keeps its volume automation
     V.clips.push(a);
     c.audioDetached = true;
   }
@@ -251,6 +252,58 @@ O.setSpeed = (cs, s) => {
     V.rippleShift(c.trackId, oldEnd - EPS, c.start + c.dur - oldEnd, new Set([c.id]));
   }
   V.changed();
+};
+/** Sets each clip's volume so its sound reaches a loudness target (LUFS) — evens out voice clips recorded at different levels. */
+O.normalizeLoudness = async (target = -14, cs = selClips()) => {
+  cs = cs.filter(c => V.hasAudio(c) && !V.trackLocked(c.trackId));
+  if (!cs.length) cs = V.clips.filter(c => V.hasAudio(c) && !V.trackLocked(c.trackId));
+  if (!cs.length) return App.toast('Add a clip with sound first', 'warn');
+  App.toast(`Measuring the loudness of ${cs.length} clip${cs.length > 1 ? 's' : ''}…`, '', 1600);
+  const res = [];
+  for (const c of cs) {
+    const m = V.getMedia(c.mediaId), ab = m && m.audioBuffer;
+    if (!ab) continue;
+    const sr = ab.sampleRate, s0 = Math.max(0, Math.floor(c.in * sr)), s1 = Math.min(ab.length, Math.ceil((c.in + c.dur * c.speed) * sr));
+    if (s1 - s0 < sr * 0.5) continue;
+    const L = await App.dsp.work('loudness', Array.from({ length: Math.min(2, ab.numberOfChannels) }, (_, i) => ab.getChannelData(i).slice(s0, s1)), sr);
+    if (!isFinite(L.integrated)) continue;
+    const want = App.dbToGain(target - L.integrated), peak = App.dbToGain(L.peak);
+    let g = Math.min(want, App.dbToGain(12));
+    if (peak * g > App.dbToGain(-1)) g = App.dbToGain(-1) / peak;   // never push peaks past −1 dBFS
+    res.push([c, Math.max(0.01, g), g < want * 0.97]);
+  }
+  if (!res.length) return App.toast('Those clips are too short or too quiet to measure', 'warn');
+  V.commit('Normalize loudness');
+  for (const [c, g] of res) {
+    // volume keyframes keep their shape, scaled to the new level
+    if (V.hasKf(c, 'volume')) { const k = g / Math.max(1e-4, c.volume); for (const p of c.kf.volume) p.v = clamp(p.v * k, 0, App.dbToGain(12)); }
+    c.volume = g;
+  }
+  V.changed('props');
+  V.panels.refreshValues && V.panels.refreshValues();
+  const short = res.filter(r => r[2]).length;
+  App.toast(`Set the volume of ${res.length} clip${res.length > 1 ? 's' : ''} for ${target} LUFS` + (short ? ` · ${short} ${short > 1 ? 'are' : 'is'} too quiet or peaky to get all the way there (boost is capped at +12 dB, peaks at −1 dB)` : ''), short ? 'warn' : 'ok', short ? 7000 : 5000, { label: 'Undo', fn: V.undo });
+};
+/** YouTube-style chapter list from the timeline markers (copy into a video description). */
+O.chapters = () => {
+  const mk = [...V.markers].sort((a, b) => a.t - b.t);
+  if (!mk.length) return App.toast('Drop a marker (M) where each chapter starts — then rename the markers to name the chapters', 'warn', 5000);
+  const stamp = t => { t = Math.max(0, Math.floor(t + 1e-6)); const hh = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = t % 60; return (hh ? hh + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0'); };
+  const list = mk[0].t >= 1 ? [{ t: 0, label: 'Intro' }, ...mk] : mk;
+  const text = list.map((m, i) => `${stamp(i ? m.t : 0)} ${(m.label || '').trim() || 'Chapter ' + (i + 1)}`).join('\n');
+  const notes = [];
+  if (list.length < 3) notes.push('YouTube needs at least 3 chapters.');
+  const short = list.filter((m, i) => (i + 1 < list.length ? list[i + 1].t : V.duration()) - (i ? m.t : 0) < 10).length;
+  if (short) notes.push(`${short} chapter${short > 1 ? 's are' : ' is'} shorter than 10 seconds — YouTube ignores chapter lists with chapters that short.`);
+  if (list !== mk) notes.push('An “Intro” chapter at 0:00 was added because YouTube’s list has to start there.');
+  const ta = h('textarea', { class: 'field wide', rows: Math.min(14, list.length + 1), spellcheck: 'false', style: { height: 'auto', fontFamily: 'var(--mono)', fontSize: '12px', padding: '8px' }, title: 'Chapters', tip: 'Edit freely, then copy it into your video’s description. Marker names become chapter titles — double-click a marker on the ruler to rename it.' });
+  ta.value = text;
+  ta.addEventListener('keydown', e => e.stopPropagation());
+  App.modal({ title: 'Chapters from markers', icon: 'marker', width: 460, pad: true,
+    body: h('div', null, h('div', { class: 'hint', style: { padding: '0 0 8px' } }, 'Paste this into a YouTube description and viewers get clickable chapters. Each marker starts a chapter; its name becomes the title.'), ta,
+      notes.length ? h('div', { class: 'hint', style: { padding: '8px 0 0', color: 'var(--warn)' } }, notes.join(' ')) : null),
+    buttons: [{ label: 'Download .txt', onClick: () => { App.download(new Blob([ta.value], { type: 'text/plain' }), (V.name || 'chapters').replace(/[\\/:*?"<>|]+/g, '_') + ' chapters.txt'); return false; } },
+      { label: 'Copy', primary: true, icon: 'copy', onClick: async () => { try { await navigator.clipboard.writeText(ta.value); App.toast('Chapters copied — paste them into your video description', 'ok'); } catch { ta.select(); App.toast('Press Ctrl+C to copy the selected text', 'warn'); return false; } } }] });
 };
 O.closeGap = (trackId, t) => {
   const list = V.clipsOn(trackId);
@@ -283,9 +336,11 @@ O.addText = (preset = {}, at = V.time) => {
   V.changed();
 };
 O.addColor = (at = V.time, trackId) => {
-  const tr = trackId ? V.getTrack(trackId) : V.firstTrack('video') || V.addTrack('video');
+  const dur = V.snapFrame(App.settings.stillDur || 5);
+  // with no track given, use the lowest video track that is free at the playhead — never cut into existing footage
   V.commit('Add color matte');
-  const c = V.makeClip({ kind: 'color', trackId: tr.id, start: V.snapFrame(at), dur: V.snapFrame(App.settings.stillDur || 5), fill: V.defaultFill() });
+  const tr = trackId ? V.getTrack(trackId) : V.freeVideoTrack(V.snapFrame(at), V.snapFrame(at) + dur, false);
+  const c = V.makeClip({ kind: 'color', trackId: tr.id, start: V.snapFrame(at), dur, fill: V.defaultFill() });
   V.clearRange(tr.id, c.start, c.start + c.dur);
   V.clips.push(c); V.sel = new Set([c.id]); V.changed();
 };
@@ -316,6 +371,7 @@ O.freezeFrame = async () => {
   if (!c) return App.toast('Put the playhead over a video clip');
   V.renderFrame(t);
   const el = V.videoEl(c);
+  if (!el.videoWidth || el.readyState < 2) return App.toast('The video is still loading — try again in a moment', 'warn');
   const cv = App.canvas(el.videoWidth, el.videoHeight);
   cv.getContext('2d').drawImage(el, 0, 0);
   const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
@@ -596,7 +652,9 @@ function clipEl(c) {
   if (c.kind === 'text') el.append(h('div', { class: 'c-text' }, c.text.content.replace(/\n/g, ' · ')));
   if (c.kind === 'video' || c.kind === 'image') el.append(h('canvas', { class: 'c-thumbs' }));
   if (c.kind === 'color') el.style.background = c.fill.gradient ? `linear-gradient(${c.fill.angle}deg, ${c.fill.c1}, ${c.fill.c2})` : c.fill.c1;
-  if (V.hasAudio(c)) el.append(h('canvas', { class: 'c-wave' }));
+  if (V.hasAudio(c)) el.append(h('canvas', { class: 'c-wave' }),
+    h('i', { class: 'c-fade in', title: 'Fade in', tip: 'Drag right to fade the sound in from silence. Double-click to remove the fade.' }),
+    h('i', { class: 'c-fade out', title: 'Fade out', tip: 'Drag left to fade the sound out to silence. Double-click to remove the fade.' }));
   el.append(h('div', { class: 'c-tr in' }), h('div', { class: 'c-tr out' }), h('div', { class: 'h l' }), h('div', { class: 'h r' }));
   layoutClip(el, c);
   return el;
@@ -610,6 +668,15 @@ function layoutClip(el, c) {
   ti.style.width = Math.min(w, c.transIn.dur * V.pps) + 'px';
   to.style.display = c.transOut.type !== 'none' ? '' : 'none';
   to.style.width = Math.min(w, c.transOut.dur * V.pps) + 'px';
+  const fi = el.querySelector('.c-fade.in'), fo = el.querySelector('.c-fade.out');
+  if (fi) {
+    // the knobs sit where each fade ramp ends (at least clear of the trim handles); hidden on very short clips
+    const show = w >= 44 ? '' : 'none';
+    fi.style.display = fo.style.display = show;
+    fi.style.left = (Math.min(w - 14, Math.max(9, c.fadeIn * V.pps)) - 5) + 'px';
+    fo.style.right = (Math.min(w - 14, Math.max(9, c.fadeOut * V.pps)) - 5) + 'px';
+    fi.classList.toggle('set', c.fadeIn > 0); fo.classList.toggle('set', c.fadeOut > 0);
+  }
   el.querySelectorAll('.c-kf').forEach(k => k.remove());
   for (const t of V.kfTimes(c)) if (t >= -1e-4 && t <= c.dur + 1e-4) el.append(h('i', { class: 'c-kf', style: { left: (t * V.pps) + 'px' } }));
   const m = V.getMedia(c.mediaId);
@@ -788,6 +855,7 @@ function setupRuler() {
         { label: 'Set out point here', icon: 'trimEnd', tip: 'Marks the end of the range.', action: () => { V.seek(V.snapFrame(t)); O.setOut(); } },
         { label: 'Clear in/out', icon: 'x', disabled: V.range.in == null && V.range.out == null, tip: 'Removes the in/out range.', action: O.clearRange },
         { label: 'Add marker here', icon: 'marker', tip: 'Drops a marker at this time.', action: () => { V.seek(V.snapFrame(t)); O.addMarker(); } },
+        { label: 'Chapters from markers…', icon: 'marker', disabled: !V.markers.length, tip: 'Turns the markers into a YouTube chapter list for your video description.', action: O.chapters },
         { label: 'Delete all markers', icon: 'trash', disabled: !V.markers.length, tip: 'Removes every marker from the timeline.', action: () => { V.commit('Delete markers'); V.markers = []; V.changed(); } },
       ]);
     }
@@ -862,6 +930,8 @@ function setupLanes() {
       markSelection();
       V.changed('sel');
       if (V.trackLocked(c.trackId)) return;
+      const fk = e.target.closest('.c-fade');
+      if (fk) return startFade(e, c, fk.classList.contains('in') ? 'in' : 'out', clipNode);
       const hd = e.target.closest('.h');
       if (hd) return startTrim(e, c, hd.classList.contains('l') ? 'l' : 'r', clipNode, hd);
       if (V.tool === 'slip') return startSlip(e, c, clipNode);
@@ -870,6 +940,12 @@ function setupLanes() {
     startMarquee(e);
   });
   T.body.addEventListener('dblclick', e => {
+    const fk = e.target.closest('.c-fade');
+    if (fk) {
+      const c = V.getClip(fk.closest('.clip').dataset.id), key = fk.classList.contains('in') ? 'fadeIn' : 'fadeOut';
+      if (c && c[key] && !V.trackLocked(c.trackId)) { V.commit('Remove fade'); c[key] = 0; V.changed('props'); V.panels.refreshValues && V.panels.refreshValues(); }
+      return;
+    }
     const lane = e.target.closest('.tl-lane');
     if (!lane || e.target.closest('.clip')) return;
     V.pause(); V.seek(V.snapFrame(T.timeAt(e.clientX)));
@@ -934,6 +1010,7 @@ function clipMenu(c, t) {
     V.isVisual(c) ? { label: 'Transition out', icon: 'transition', tip: 'Choose how this clip disappears.', sub: trOut } : null,
     c.kind === 'video' && V.hasAudio(c) ? { label: 'Detach audio', icon: 'detach', tip: 'Moves the sound to its own audio track.', action: () => O.detachAudio(cs) } : null,
     c.kind === 'video' ? { label: 'Freeze frame at playhead', icon: 'freeze', tip: 'Inserts a 2-second still of the frame at the playhead.', action: O.freezeFrame } : null,
+    V.hasAudio(c) ? { label: 'Normalize loudness', icon: 'normalize', tip: 'Sets the volume of the selected clips so they all sound equally loud.', sub: [[-14, 'YouTube, Spotify, Instagram (−14 LUFS)'], [-16, 'Podcasts, Apple (−16 LUFS)'], [-23, 'TV broadcast (−23 LUFS)']].map(([t, l]) => ({ label: l, action: () => O.normalizeLoudness(t, cs) })) } : null,
     V.hasAudio(c) ? { label: c.muted ? 'Unmute clip' : 'Mute clip', icon: c.muted ? 'volume' : 'mute', tip: 'Silences only this clip.', action: () => { V.commit('Mute clip'); cs.forEach(k => k.muted = !c.muted); V.changed(); } } : null,
     { label: 'Clip color', icon: 'palette', tip: 'Color-code clips to keep your timeline organized.', sub: colors.map(([n, col]) => ({ label: n, swatch: col || '#4f7cff', checked: c.label === col, action: () => { V.commit('Clip color'); cs.forEach(k => k.label = col); V.changed(); } })) },
     V.isVisual(c) ? { label: 'Copy attributes', icon: 'copy', key: 'Ctrl+Alt+C', tip: 'Copies this clip’s position, scale, color, key, mask and keyframes so you can paste the same look onto other clips.', action: O.copyAttrs } : null,
@@ -1116,6 +1193,28 @@ function startRoll(e, a, b, handle) {
   addEventListener('pointermove', mv); addEventListener('pointerup', up);
 }
 
+/* ---------- audio fade handles ---------- */
+function startFade(e, c, side, el) {
+  e.preventDefault();
+  const key = side === 'in' ? 'fadeIn' : 'fadeOut', other = side === 'in' ? 'fadeOut' : 'fadeIn';
+  const x0 = e.clientX, f0 = c[key];
+  let committed = false;
+  document.body.classList.add('dragging-ui');
+  const mv = ev => {
+    if (!committed) { V.commit(side === 'in' ? 'Fade in' : 'Fade out'); committed = true; }
+    const d = (ev.clientX - x0) / V.pps * (side === 'in' ? 1 : -1);
+    c[key] = Math.round(clamp(f0 + d, 0, Math.max(0, c.dur - c[other])) * 100) / 100;
+    layoutClip(el, c);
+    T.readout(ev, c[key] ? `Fade ${side} ${c[key].toFixed(2)} s` : `No fade ${side}`);
+  };
+  const up = () => {
+    removeEventListener('pointermove', mv); removeEventListener('pointerup', up);
+    document.body.classList.remove('dragging-ui'); T.readout(null);
+    if (committed) { V.changed('props'); V.panels.refreshValues && V.panels.refreshValues(); }
+  };
+  addEventListener('pointermove', mv); addEventListener('pointerup', up);
+}
+
 /* ---------- slip ---------- */
 function startSlip(e, c, el) {
   if (c.kind !== 'video' && c.kind !== 'audio') return App.toast('Slip works on video and audio clips');
@@ -1227,7 +1326,7 @@ function setupDrop() {
     if (!lane) return;
     let t = T.timeAt(ev.clientX);
     const s = T.snap(t, T.snapTargets()); t = s.snapped ? s.t : t;
-    const dur = p.kind === 'media' ? (p.media.type === 'image' ? 5 : p.media.duration) : 5;
+    const still = App.settings.stillDur || 5, dur = p.kind === 'media' ? (p.media.type === 'image' ? still : p.media.duration) : still;
     ind = h('div', { class: 'drop-indicator', style: { left: t * V.pps + 'px', width: dur * V.pps + 'px' } });
     lane.append(ind);
   });
