@@ -820,11 +820,14 @@ function menus() {
       { label: 'Zoom out', icon: 'zoomOut', key: '-', tip: 'Shows more time.', action: () => A.zoomBy(1 / 1.6) },
       { label: 'Fit project', icon: 'fit', key: 'F', tip: 'Fits everything in view.', action: A.zoomFit },
       { label: 'Zoom to selection', icon: 'expand', key: 'Z', disabled: !A.sel, tip: 'Fills the view with the selected range.', action: A.zoomSel },
+      App.wheelMenu(),
       { sep: true },
       { label: 'Waveform view', icon: 'wave', tip: 'Shows selected tracks as waveforms (amplitude over time).', action: () => { A.targets().forEach(t => t.view = 'wave'); A.redraw(); } },
       { label: 'Spectrogram view', icon: 'spectrum', tip: 'Shows selected tracks as a heat-map of frequencies over time — noise and hum become easy to spot.', action: () => { A.targets().forEach(t => t.view = 'spec'); A.redraw(); } },
       { sep: true },
       { label: 'Show effects panel', icon: 'panelRight', checked: () => !el.root.classList.contains('no-side'), tip: 'Show or hide the effects rack.', action: toggleSide },
+      { sep: true },
+      App.uiScaleMenu(),
     ] },
   ];
 }
@@ -1273,11 +1276,14 @@ function envPointer(e, tr, lane) {
   const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); App.V && App.V.tl && App.V.tl.readout && App.V.tl.readout(null); A.changed(); if (A.playing) A.seek(A.playhead); };
   addEventListener('pointermove', mv); addEventListener('pointerup', up);
 }
+/* mouse wheel and middle-button navigation, shared with the video timeline (App.timelineNav in core/ui.js) */
+const nav = {
+  zoom: (f, cx) => A.zoomBy(f, cx),
+  panX: d => A.setView(A.pps, A.scroll + d / A.pps),
+  panY: d => { el.tracks.scrollTop += d; },
+};
 function setupLaneEvents() {
-  el.tracks.addEventListener('wheel', e => {
-    if (e.ctrlKey || e.metaKey) { e.preventDefault(); A.zoomBy(e.deltaY < 0 ? 1.25 : 0.8, e.clientX); }
-    else if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) { e.preventDefault(); A.setView(A.pps, A.scroll + (e.deltaX || e.deltaY) / A.pps); }
-  }, { passive: false });
+  App.timelineNav(el.tracks, { ...nav, heads: '.a-thead' });
   el.tracks.addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
     const lane = e.target.closest('.a-lane');
@@ -1408,7 +1414,9 @@ function setupRuler() {
     const up = () => { removeEventListener('pointermove', go); removeEventListener('pointerup', up); };
     addEventListener('pointermove', go); addEventListener('pointerup', up);
   });
-  el.ruler.addEventListener('wheel', e => { e.preventDefault(); A.zoomBy(e.deltaY < 0 ? 1.25 : 0.8, e.clientX); }, { passive: false });
+  // the wheel over the ruler (and the markers on it) always zooms — there's nothing to scroll there
+  App.timelineNav(el.ruler, { ...nav, zoomOnly: true });
+  App.timelineNav(el.markers, { ...nav, zoomOnly: true });
   el.markers.addEventListener('pointerdown', e => {
     const mk = e.target.closest('.a-marker');
     if (!mk || e.button !== 0) return;
@@ -1843,7 +1851,7 @@ App.modules.audio = {
   shortcuts: [
     ['Transport', [['Space', 'Play / pause'], ['Home / End', 'Start / end'], ['R', 'Record (toggle)'], ['L', 'Loop selection'], ['← / →', 'Move cursor'], ['Shift + ← / →', 'Extend selection'], ['M', 'Add marker / region']]],
     ['Editing', [['Ctrl + X / C / V', 'Cut / copy / paste'], ['Del', 'Delete selection'], ['Ctrl + L', 'Silence selection'], ['Ctrl + T', 'Trim to selection'], ['Ctrl + D', 'Duplicate to new track'], ['Ctrl + Shift + D', 'Split to new track'], ['Ctrl + R', 'Repeat last effect'], ['Ctrl + Shift + S', 'Remove silences'], ['Ctrl + Z / Shift + Z', 'Undo / redo'], ['Ctrl + S', 'Save project file']]],
-    ['Selection & view', [['Drag', 'Select a range (across tracks)'], ['Shift + click', 'Extend selection'], ['Double-click', 'Select whole track'], ['Ctrl + A / Esc', 'Select all / none'], ['= / -', 'Zoom in / out'], ['F / Z', 'Fit project / zoom to selection'], ['Ctrl + wheel', 'Zoom at cursor'], ['Shift + wheel', 'Scroll horizontally'], ['I / T / E', 'Selection / time-shift / envelope tool']]],
+    ['Selection & view', [['Drag', 'Select a range (across tracks)'], ['Shift + click', 'Extend selection'], ['Double-click', 'Select whole track'], ['Ctrl + A / Esc', 'Select all / none'], ['= / -', 'Zoom in / out'], ['F / Z', 'Fit project / zoom to selection'], ['Wheel', 'Zoom at the pointer (Preferences can make it scroll)'], ['Shift / Alt + wheel', 'Scroll sideways / up and down'], ['Press wheel + drag', 'Move around the timeline'], ['I / T / E', 'Selection / time-shift / envelope tool']]],
   ],
 };
 })();

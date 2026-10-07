@@ -10,6 +10,8 @@ const set = (k, v) => App.setSetting(k, v);
 /* appearance settings re-style the app as soon as they change */
 const LOOK = new Set(['theme', 'accentMode', 'accentColor', 'uiFont', 'roundness', 'transparency', 'density', 'themeEffects', 'reduceMotion', 'checker', 'checkerSize']);
 App.on('setting', k => { if (LOOK.has(k)) App.applyLook(App.settings); });
+// a reset or imported preferences file can change the interface size too
+App.on('setting', k => { if (k === 'uiScale' && App.setUiScale && App.settings.uiScale !== App.uiScale()) App.setUiScale(App.settings.uiScale); });
 App.setTheme = id => {
   const go = () => set('theme', id);
   if (!document.startViewTransition || S().reduceMotion || document.hidden) return go();
@@ -122,7 +124,21 @@ function appearance() {
         { value: 'normal', label: 'Normal', tip: 'The standard size.' },
         { value: 'comfy', label: 'Comfortable', tip: 'Larger controls and text — easier to hit and read.' }])),
       toggle('Theme effects', 'themeEffects', 'Decorative extras some themes add: CRT scanlines (Terminal), film grain (Film Noir), stitched leather (Skeuomorphic) and the blinking cursor. Turn off for a cleaner look.')),
+    group('Interface size', ...sizeControls()),
   ];
+}
+
+/* Interface size: applied when the slider is let go, so the slider doesn't move under the mouse */
+let syncSize = null;
+App.on('uiscale', () => syncSize && syncSize());
+function sizeControls() {
+  if (!App.uiScaleSupported) return [note('Needs a newer version of Chrome, Edge or WebView2.')];
+  const pct = () => Math.round(App.uiScale() * 100);
+  const sl = App.slider({ label: 'Size', min: 50, max: 200, step: 5, value: pct(), def: 100, unit: '%', tip: 'Makes everything in Strata bigger or smaller — menus, buttons, text and panels. Let go of the slider to apply.', onChange: v => App.setUiScale(v / 100) });
+  syncSize = () => { if (sl.isConnected) sl.set(pct()); };
+  const chip = s => { const c = h('button', { class: 'chip', title: s + '%', tip: `Show the interface at ${s}% size.` }, s + '%'); c.addEventListener('click', () => App.setUiScale(s / 100)); return c; };
+  return [sl, h('div', { class: 'chips', style: { padding: '2px 0 4px' } }, [75, 90, 100, 125, 150].map(chip)),
+    note('Also in every editor under View ▸ Interface size. Shortcuts: Ctrl+Alt+= bigger, Ctrl+Alt+- smaller, Ctrl+Alt+0 back to 100%.')];
 }
 
 function sounds() {
@@ -177,6 +193,9 @@ function interfaceSec() {
         { value: 'top', label: 'Top', tip: 'Just under the top bar.' }, { value: 'top-right', label: 'Top right', tip: 'Top-right corner.' }], () => App.toast('Notifications will appear here', 'ok'))),
       h('div', { class: 'ctl', title: 'Duration', tip: 'How long messages stay on screen (hovering one keeps it open).' }, h('label', null, 'Duration'), seg('toastTime', [
         { value: 'short', label: 'Short', tip: 'Messages disappear quickly.' }, { value: 'normal', label: 'Normal', tip: 'The standard time.' }, { value: 'long', label: 'Long', tip: 'Messages stay almost twice as long.' }]))),
+    group('Timelines',
+      App.select({ label: 'Mouse wheel', value: S().timelineWheel || 'zoom', tip: 'What the mouse wheel does over the Video and Audio timelines. Pressing the wheel and dragging always moves the view.', options: [['zoom', 'Zooms in and out (Shift = sideways, Alt = up/down)'], ['scroll', 'Scrolls up and down (Ctrl = zoom, Shift = sideways)']], onChange: v => set('timelineWheel', v) }),
+      note('Tip: press the mouse wheel and drag to move around a timeline in any direction.')),
     group('Start-up & motion',
       App.select({ label: 'Welcome screen', value: S().welcome || 'always', tip: 'When the welcome screen with the three editors appears. Each theme has its own welcome screen.', options: [['first', 'First launch only'], ['always', 'Every time Strata starts'], ['never', 'Never']], onChange: v => set('welcome', v) }),
       App.select({ label: 'Start in', value: S().startMode || 'last', tip: 'Which editor is open when Strata Studio starts.', options: [['last', 'The editor I used last'], ['video', 'Video'], ['audio', 'Audio'], ['image', 'Image']], onChange: v => set('startMode', v) }),
@@ -371,9 +390,9 @@ function about() {
 }
 
 const SECTIONS = [
-  { id: 'appearance', label: 'Appearance', icon: 'theme', build: appearance, keys: 'theme colour color accent font typeface roundness corners transparency glass density compact effects dark light' },
+  { id: 'appearance', label: 'Appearance', icon: 'theme', build: appearance, keys: 'theme colour color accent font typeface roundness corners transparency glass density compact effects dark light interface size zoom scale bigger smaller ui' },
   { id: 'sounds', label: 'Sounds', icon: 'sound', build: sounds, keys: 'sound audio click volume pack mute beep quiet' },
-  { id: 'interface', label: 'Interface', icon: 'sliders2', build: interfaceSec, keys: 'tips explainers tooltips delay notifications toast welcome start motion animation' },
+  { id: 'interface', label: 'Interface', icon: 'sliders2', build: interfaceSec, keys: 'tips explainers tooltips delay notifications toast welcome start motion animation mouse wheel scroll zoom timeline middle pan' },
   { id: 'projects', label: 'Projects & saving', icon: 'save', build: projects, keys: 'autosave save undo history resolution frame rate fps new image size background' },
   { id: 'video', label: 'Video', icon: 'film', build: videoSec, keys: 'preview quality scrub snap ripple still title duration track height timeline' },
   { id: 'audio', label: 'Audio', icon: 'wave', build: audioSec, keys: 'waveform spectrogram zero crossing effects panel' },

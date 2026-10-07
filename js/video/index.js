@@ -90,6 +90,7 @@ function menus() {
       { label: 'Zoom in', icon: 'zoomIn', key: '=', tip: 'Zoom the timeline in.', action: () => T.zoomBy(1.5) },
       { label: 'Zoom out', icon: 'zoomOut', key: '-', tip: 'Zoom the timeline out.', action: () => T.zoomBy(1 / 1.5) },
       { label: 'Zoom to fit', icon: 'fit', key: '\\', tip: 'Fit the whole edit in view.', action: T.zoomFit },
+      App.wheelMenu(),
       { sep: true },
       { label: 'Fullscreen preview', icon: 'expand', key: 'F', tip: 'Watch the program full screen.', action: () => P.toggleFullscreen() },
       { label: 'Safe-area guides', icon: 'safe', key: "'", checked: !!P.guides, tip: 'Framing guides over the preview.', action: () => P.toggleGuides() },
@@ -97,6 +98,8 @@ function menus() {
       { sep: true },
       { label: 'Show media panel', icon: 'panelLeft', checked: !root.classList.contains('no-left'), tip: 'Show or hide the left panel.', action: () => togglePanel('no-left') },
       { label: 'Show inspector', icon: 'panelRight', checked: !root.classList.contains('no-right'), tip: 'Show or hide the right panel.', action: () => togglePanel('no-right') },
+      { sep: true },
+      App.uiScaleMenu(),
     ] },
   ];
 }
@@ -210,7 +213,7 @@ App.modules.video = {
     ['Playback', [['Space', 'Play / pause'], ['J / K / L', 'Shuttle back / stop / forward'], ['← / →', 'Previous / next frame'], ['Shift + ← / →', 'Back / forward 1 second'], ['↑ / ↓', 'Previous / next cut'], ['Home / End', 'Start / end'], ['I / O', 'Mark in / out'], ['Alt + X', 'Clear in/out'], ['Ctrl + L', 'Loop playback'], ['F', 'Fullscreen preview']]],
     ['Cutting', [['S', 'Split at playhead'], ['Ctrl + Shift + S', 'Remove silences (auto-cut pauses)'], ['Ctrl + Shift + C', 'Auto captions (speech to text)'], ['Q', 'Trim start to playhead (ripple)'], ['W', 'Trim end to playhead (ripple)'], ['Del', 'Delete'], ['Shift + Del', 'Ripple delete'], ['Ctrl + drag edge', 'Roll edit (move a cut)'], ['Alt + ← / →', 'Nudge clip one frame'], ['Alt + drag', 'Duplicate while dragging'], ['Ctrl + drop', 'Insert (push clips right)']]],
     ['Tools', [['V', 'Select tool'], ['C', 'Blade tool (Shift = all tracks)'], ['Y', 'Slip tool'], ['N', 'Toggle snapping'], ['R', 'Toggle ripple editing'], ['M', 'Add marker'], ['[ / ]', 'Previous / next keyframe']]],
-    ['Edit & view', [['Ctrl + Z / Shift + Z', 'Undo / redo'], ['Ctrl + C / X / V', 'Copy / cut / paste'], ['Ctrl + Alt + C / V', 'Copy / paste attributes'], ['Ctrl + D', 'Duplicate'], ['Ctrl + A', 'Select all'], ['= / -', 'Zoom in / out'], ['\\', 'Zoom to fit'], ['Ctrl + wheel', 'Zoom at cursor'], ['Ctrl + S', 'Save project file'], ['Ctrl + E', 'Export'], ["'", 'Safe-area guides']]],
+    ['Edit & view', [['Ctrl + Z / Shift + Z', 'Undo / redo'], ['Ctrl + C / X / V', 'Copy / cut / paste'], ['Ctrl + Alt + C / V', 'Copy / paste attributes'], ['Ctrl + D', 'Duplicate'], ['Ctrl + A', 'Select all'], ['= / -', 'Zoom in / out'], ['\\', 'Zoom to fit'], ['Wheel', 'Zoom at the pointer (Preferences can make it scroll)'], ['Shift / Alt + wheel', 'Scroll sideways / up and down'], ['Press wheel + drag', 'Move around the timeline'], ['Ctrl + S', 'Save project file'], ['Ctrl + E', 'Export'], ["'", 'Safe-area guides']]],
   ],
 };
 })();

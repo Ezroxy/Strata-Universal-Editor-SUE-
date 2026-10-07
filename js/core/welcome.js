@@ -62,7 +62,8 @@ const injected = new Set();
 const inject = (id, css) => {
   if (injected.has(id) || !css) return;
   injected.add(id);
-  const st = document.createElement('style'); st.dataset.welcome = id; st.textContent = css; document.head.append(st);
+  // viewport units are rewritten so full-screen layouts still fill the window at any Interface size
+  const st = document.createElement('style'); st.dataset.welcome = id; st.textContent = App.fixViewportUnits ? App.fixViewportUnits(css) : css; document.head.append(st);
 };
 
 let current = null;
