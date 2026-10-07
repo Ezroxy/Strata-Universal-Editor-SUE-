@@ -124,6 +124,9 @@ function appearance() {
         { value: 'normal', label: 'Normal', tip: 'The standard size.' },
         { value: 'comfy', label: 'Comfortable', tip: 'Larger controls and text — easier to hit and read.' }])),
       toggle('Theme effects', 'themeEffects', 'Decorative extras some themes add: CRT scanlines (Terminal), film grain (Film Noir), stitched leather (Skeuomorphic) and the blinking cursor. Turn off for a cleaner look.')),
+    group('Windows XP look', App.select({ label: 'XP look', value: S().xpStyle || 'luna', tip: 'Only used by the Windows XP theme: how Strata sits on the XP desktop.',
+      options: [['luna', 'Luna — one program window'], ['desk', 'Desktop — every panel is its own window'], ['dream', 'Dreamcore — chunky 3D windows']], onChange: v => set('xpStyle', v) }),
+      note('Pick the Windows XP Luna theme above to see it. Each look has a taskbar, a Start menu and the hill wallpaper.')),
     group('Interface size', ...sizeControls()),
   ];
 }

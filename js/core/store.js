@@ -13,7 +13,7 @@ const DEFAULTS = {
   sounds: true, soundVolume: 55, soundPack: 'theme', soundCats: {}, soundQuiet: true,
   // interface
   toastPos: 'bottom', toastTime: 'normal', welcome: 'always', startMode: 'last',
-  uiScale: 1, timelineWheel: 'zoom',
+  uiScale: 1, timelineWheel: 'zoom', xpStyle: 'luna',
   // projects & editors
   autosaveSpeed: 'normal', undoSize: 'normal', newVideo: { w: 1920, h: 1080, fps: 30 }, newImage: { w: 1280, h: 800, bg: 'white' },
   snapDefault: true, rippleDefault: false, stillDur: 5, audioView: 'wave', zeroSnapDefault: false,
