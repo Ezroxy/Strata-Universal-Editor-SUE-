@@ -215,7 +215,7 @@ function getWorker() {
   try {
     worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
     worker.onmessage = e => { const p = pending.get(e.data.id); if (!p) return; pending.delete(e.data.id); e.data.err ? p.rej(new Error(e.data.err)) : p.res(e.data.r); };
-    worker.onerror = () => { worker = null; };
+    worker.onerror = () => { worker = null; for (const p of pending.values()) p.rej(new Error('The audio processor stopped unexpectedly')); pending.clear(); };
   } catch { worker = null; }
   return worker;
 }

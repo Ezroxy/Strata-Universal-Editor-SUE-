@@ -231,7 +231,8 @@ O.detachAudio = (cs = selClips()) => {
   for (const c of cs) {
     let tr = V.tracks.find(t => t.type === 'audio' && !t.locked && !V.clips.some(k => k.trackId === t.id && k.start < c.start + c.dur - EPS && k.start + k.dur > c.start + EPS));
     if (!tr) tr = V.addTrack('audio');
-    const a = V.makeClip({ kind: 'audio', mediaId: c.mediaId, trackId: tr.id, start: c.start, dur: c.dur, in: c.in, speed: c.speed, volume: c.volume, pan: c.pan, fadeIn: c.fadeIn, fadeOut: c.fadeOut });
+    const a = V.makeClip({ kind: 'audio', mediaId: c.mediaId, trackId: tr.id, start: c.start, dur: c.dur, in: c.in, speed: c.speed, keepPitch: c.keepPitch, volume: c.volume, pan: c.pan, fadeIn: c.fadeIn, fadeOut: c.fadeOut, muted: c.muted,
+      kf: V.hasKf(c, 'volume') ? { volume: JSON.parse(JSON.stringify(c.kf.volume)) } : {} });   // the sound keeps its volume automation
     V.clips.push(a);
     c.audioDetached = true;
   }
@@ -283,9 +284,11 @@ O.addText = (preset = {}, at = V.time) => {
   V.changed();
 };
 O.addColor = (at = V.time, trackId) => {
-  const tr = trackId ? V.getTrack(trackId) : V.firstTrack('video') || V.addTrack('video');
+  const dur = V.snapFrame(App.settings.stillDur || 5);
+  // with no track given, use the lowest video track that is free at the playhead — never cut into existing footage
   V.commit('Add color matte');
-  const c = V.makeClip({ kind: 'color', trackId: tr.id, start: V.snapFrame(at), dur: V.snapFrame(App.settings.stillDur || 5), fill: V.defaultFill() });
+  const tr = trackId ? V.getTrack(trackId) : V.freeVideoTrack(V.snapFrame(at), V.snapFrame(at) + dur, false);
+  const c = V.makeClip({ kind: 'color', trackId: tr.id, start: V.snapFrame(at), dur, fill: V.defaultFill() });
   V.clearRange(tr.id, c.start, c.start + c.dur);
   V.clips.push(c); V.sel = new Set([c.id]); V.changed();
 };
@@ -316,6 +319,7 @@ O.freezeFrame = async () => {
   if (!c) return App.toast('Put the playhead over a video clip');
   V.renderFrame(t);
   const el = V.videoEl(c);
+  if (!el.videoWidth || el.readyState < 2) return App.toast('The video is still loading — try again in a moment', 'warn');
   const cv = App.canvas(el.videoWidth, el.videoHeight);
   cv.getContext('2d').drawImage(el, 0, 0);
   const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
@@ -1227,7 +1231,7 @@ function setupDrop() {
     if (!lane) return;
     let t = T.timeAt(ev.clientX);
     const s = T.snap(t, T.snapTargets()); t = s.snapped ? s.t : t;
-    const dur = p.kind === 'media' ? (p.media.type === 'image' ? 5 : p.media.duration) : 5;
+    const still = App.settings.stillDur || 5, dur = p.kind === 'media' ? (p.media.type === 'image' ? still : p.media.duration) : still;
     ind = h('div', { class: 'drop-indicator', style: { left: t * V.pps + 'px', width: dur * V.pps + 'px' } });
     lane.append(ind);
   });

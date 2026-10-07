@@ -16,10 +16,11 @@ const types = {
 const isolation = { 'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-Embedder-Policy': 'require-corp', 'Cross-Origin-Resource-Policy': 'same-origin' };
 
 http.createServer((req, res) => {
-  let p = decodeURIComponent(req.url.split('?')[0]);
+  let p;
+  try { p = decodeURIComponent(req.url.split('?')[0]); } catch { res.writeHead(400); return res.end('Bad request'); }   // e.g. a stray “%” — don't crash the server
   if (p === '/') p = '/index.html';
   const file = path.normalize(path.join(root, p));
-  if (!file.startsWith(root)) { res.writeHead(403); return res.end(); }
+  if (file !== root && !file.startsWith(root + path.sep)) { res.writeHead(403); return res.end(); }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404, isolation); return res.end('Not found'); }
     res.writeHead(200, { 'Content-Type': types[path.extname(file).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'no-cache', ...isolation });

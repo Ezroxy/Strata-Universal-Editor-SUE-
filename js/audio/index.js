@@ -301,9 +301,9 @@ A.applyFx = async (fx, params = {}) => {
   const t0 = A.sel ? A.sel.t0 : -Infinity, t1 = A.sel ? A.sel.t1 : Infinity;
   A.busy(true, fx.name + '…');
   await new Promise(r => setTimeout(r, 30));
+  const snapBefore = snap();
+  let done = 0;
   try {
-    const snapBefore = snap();
-    let done = 0;
     for (const tr of tgs) {
       const [s0, s1] = A.sampleRange(tr, t0, t1);
       if (s1 - s0 < 32) continue;
@@ -319,6 +319,8 @@ A.applyFx = async (fx, params = {}) => {
       App.toast(`${fx.name} applied`, 'ok', 3000, { label: 'Undo', fn: A.undo });
     } else App.toast('Selection is too short or outside the track', 'warn');
   } catch (e) {
+    // tracks processed before the error stay changed — keep them undoable
+    if (done) { A.undoStack.push({ s: snapBefore, label: fx.name }); A.redoStack.length = 0; }
     App.toast(e.message || String(e), 'err', 5000);
   }
   A.busy(false);
@@ -973,7 +975,7 @@ function trackMenu(tr) {
   const i = A.tracks.indexOf(tr);
   return [
     { label: 'Rename…', icon: 'tag', tip: 'Give the track a new name.', action: async () => { const v = await App.prompt('Rename track', 'Track name', tr.name); if (v != null) { A.commit('Rename'); tr.name = v || tr.name; A.changed(); } } },
-    { label: 'Color', icon: 'palette', tip: 'Change the track color.', sub: COLORS.map(c => ({ label: COLOR_NAMES[c] || c, swatch: c, checked: tr.color === c, action: () => { tr.color = c; A.changed(); } })) },
+    { label: 'Color', icon: 'palette', tip: 'Change the track color.', sub: COLORS.map(c => ({ label: COLOR_NAMES[c] || c, swatch: c, checked: tr.color === c, action: () => { A.commit('Track color'); tr.color = c; A.changed(); } })) },
     { label: 'Waveform', icon: 'wave', checked: tr.view === 'wave', tip: 'Amplitude over time — best for editing.', action: () => { tr.view = 'wave'; drawTrack(tr); } },
     { label: 'Spectrogram', icon: 'spectrum', checked: tr.view === 'spec', tip: 'Frequency heat-map — reveals hum, hiss and harsh frequencies.', action: () => { tr.view = 'spec'; drawTrack(tr); } },
     { sep: true },
@@ -984,8 +986,8 @@ function trackMenu(tr) {
     { label: 'Duplicate track', icon: 'copy', tip: 'Makes an identical copy below.', action: () => { A.commit('Duplicate track'); const n = A.newTrack(tr.channels.map(c => c), tr.name + ' copy', tr.offset); n.gain = tr.gain; n.pan = tr.pan; n.env = (tr.env || []).map(p => ({ ...p })); A.tracks.splice(A.tracks.indexOf(n), 1); A.tracks.splice(i + 1, 0, n); A.changed(); } },
     { label: 'Clear envelope', icon: 'envelope', disabled: !(tr.env && tr.env.length), tip: 'Removes this track’s volume automation.', action: () => { A.commit('Clear envelope'); tr.env = []; A.changed(); } },
     { sep: true },
-    { label: 'Move up', icon: 'chevUp', disabled: i === 0, tip: 'Moves the track up.', action: () => { A.tracks.splice(i, 1); A.tracks.splice(i - 1, 0, tr); A.changed(); } },
-    { label: 'Move down', icon: 'chevDown', disabled: i === A.tracks.length - 1, tip: 'Moves the track down.', action: () => { A.tracks.splice(i, 1); A.tracks.splice(i + 1, 0, tr); A.changed(); } },
+    { label: 'Move up', icon: 'chevUp', disabled: i === 0, tip: 'Moves the track up.', action: () => { A.commit('Move track'); A.tracks.splice(i, 1); A.tracks.splice(i - 1, 0, tr); A.changed(); } },
+    { label: 'Move down', icon: 'chevDown', disabled: i === A.tracks.length - 1, tip: 'Moves the track down.', action: () => { A.commit('Move track'); A.tracks.splice(i, 1); A.tracks.splice(i + 1, 0, tr); A.changed(); } },
     { label: 'Delete track', icon: 'trash', tip: 'Removes the track (can be undone).', action: () => { A.commit('Delete track'); A.tracks.splice(i, 1); A.changed(); App.toast(`Deleted “${tr.name}”`, '', 3500, { label: 'Undo', fn: A.undo }); } },
   ];
 }
@@ -1358,7 +1360,7 @@ A.captureNoise = () => {
 function markerMenu(m) {
   return [
     { label: 'Rename…', icon: 'tag', tip: 'Change the label.', action: async () => { const v = await App.prompt('Rename', 'Label', m.label); if (v != null) { A.commit('Rename marker'); m.label = v; A.changed(); } } },
-    { label: 'Color', icon: 'palette', tip: 'Color-code markers by meaning.', sub: MCOLORS.map(c => ({ label: COLOR_NAMES[c] || c, swatch: c, checked: m.color === c, action: () => { m.color = c; A.changed(); } })) },
+    { label: 'Color', icon: 'palette', tip: 'Color-code markers by meaning.', sub: MCOLORS.map(c => ({ label: COLOR_NAMES[c] || c, swatch: c, checked: m.color === c, action: () => { A.commit('Marker color'); m.color = c; A.changed(); } })) },
     m.t1 != null ? { label: 'Select region', icon: 'cursor', tip: 'Selects this region on all tracks.', action: () => { A.sel = { t0: m.t, t1: m.t1 }; if (!A.selTracks().length) A.tracks.forEach(t => t.selected = true); A.renderHeads(); A.redraw(); } } : null,
     m.t1 != null ? { label: 'Export region…', icon: 'download', tip: 'Exports just this region as its own file.', action: () => A.exportDialog(false, { t0: m.t, t1: m.t1, label: m.label, name: m.label }) } : null,
     { label: 'Delete', icon: 'trash', tip: 'Removes this marker.', action: () => { A.commit('Delete marker'); A.markers = A.markers.filter(x => x !== m); A.changed(); } },

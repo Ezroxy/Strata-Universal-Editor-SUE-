@@ -133,12 +133,14 @@ function runJob(fname, ext, job, dur) {
       if (fc) { const tx = thumb.getContext('2d'); tx.drawImage(fc, 0, 0, 160, 90); }
     },
   };
+  let finished = false;
   const md = App.modal({ title: 'Exporting', icon: 'download', width: 460, pad: true,
     body: h('div', { style: { display: 'flex', gap: '14px', alignItems: 'center' } }, thumb, h('div', { style: { flex: 1, minWidth: 0 } }, stageEl, h('div', { class: 'progress' }, bar), h('div', { class: 'prog-meta' }, pct, speed, eta))),
-    buttons: [{ label: 'Cancel export', tip: 'Stops rendering; nothing is saved.', onClick: () => { job.cancel(); } }] });
+    buttons: [{ label: 'Cancel export', tip: 'Stops rendering; nothing is saved.', onClick: () => { job.cancel(); } }],
+    onClose: () => { if (!finished) job.cancel(); } });   // Esc or a click outside also stops the export (it used to keep rendering unseen)
   V.renderFrame(V.time);
   job.promise.then(blob => {
-    md.close(); progUI = null;
+    finished = true; md.close(); progUI = null;
     const file = `${fname}.${ext}`;
     App.download(blob, file);
     const secs = (performance.now() - started) / 1000;
@@ -146,7 +148,7 @@ function runJob(fname, ext, job, dur) {
       body: h('div', null, h('div', { style: { fontSize: '14px', fontWeight: 800, marginBottom: '6px' } }, file), h('div', { class: 'hint', style: { padding: 0 } }, `${App.fmtBytes(blob.size)} · rendered in ${App.fmtDur(secs)}. The file is in your Downloads folder.`)),
       buttons: [{ label: 'Download again', icon: 'download', onClick: () => { App.download(blob, file); return false; } }, { label: 'Done', primary: true }] });
   }).catch(err => {
-    md.close(); progUI = null;
+    finished = true; md.close(); progUI = null;
     if (err && err.message === 'cancelled') App.toast('Export cancelled');
     else { console.error(err); App.toast('Export failed: ' + (err && err.message || err), 'err', 6000); }
   }).finally(() => { V.renderFrame(V.time); });

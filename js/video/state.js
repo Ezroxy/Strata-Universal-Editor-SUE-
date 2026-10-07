@@ -312,8 +312,13 @@ V.importFiles = async (files, opts = {}) => {
     V.media.push(m);
     V.changed('media');
     try {
-      if (type === 'video') {
-        await loadVideoMeta(m);
+      if (type === 'video') await loadVideoMeta(m);
+      if (type === 'video' && !(m.width && m.height)) {
+        // sound only, in a video container (e.g. a .webm or .mp4 exported from the Audio editor) → treat it as audio
+        m.type = 'audio';
+        await decodeAudio(m);
+        m.loading = false; added.push(m);
+      } else if (type === 'video') {
         m.loading = false;
         added.push(m);
         V.changed('media');

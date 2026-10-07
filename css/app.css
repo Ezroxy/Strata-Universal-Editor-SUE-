@@ -837,6 +837,21 @@ kbd, .kbd { font-family: var(--mono); font-size: 10px; font-weight: 600; padding
 .dims { display: flex; align-items: center; gap: 8px; padding: 4px 16px; }
 .dims .field { width: 90px; }
 
+/* medium screens: a tighter audio toolbar so it stays on one row (it still wraps neatly on small screens) */
+@media (max-width: 1720px) {
+  .a-top { gap: 2px; }
+  .a-top .btn:not(.txt):not(.play-btn) { padding: 0 4px; min-width: 28px; }
+  .a-top .proj-name { width: 128px; }
+  .a-top .a-time { min-width: 126px; padding: 0 8px; }
+  .a-top .btn.solid.txt > span { display: none; }
+  .a-top .menubar > button { padding: 0 7px; }
+  .a-top .a-time { font-size: 19px; }
+}
+/* narrower screens: drop the arrows between the image workflow steps so Save / Export stay on the same row */
+@media (max-width: 1500px) {
+  .workflow .wf-arrow { display: none; }
+  .workflow .wf-step { padding: 0 9px 0 5px; gap: 6px; }
+}
 @media (max-width: 1180px) {
   #mod-video { --lw: 236px; --rw: 266px; }
   .brand em { display: none; }
