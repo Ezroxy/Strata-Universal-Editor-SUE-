@@ -29,6 +29,8 @@ Chrome or Edge is recommended. They support fast MP4 export (WebCodecs) and ever
 - **15 themes**, switchable from the palette button in the top bar or **Preferences ▸ Appearance** (with live previews): Strata Dark and Light, Frutiger Aero, Windows XP Luna, Skeuomorphic Studio, Midnight OLED, Synthwave, Terminal, Nord Frost, Paper & Ink, Classic 98, Pastel Pop, Film Noir, Grove Street and High Contrast.
 - **A welcome screen for every theme**, shown each time Strata starts (turn it off with its "Show at startup" switch or in Preferences ▸ Interface): rock layers that settle in (Strata Dark), live previews in a bento grid (Light), glossy bubbles over a green hill (Frutiger Aero), the XP log-on screen, a hardware console with VU meters and a rotary selector (Skeuomorphic), planets orbiting a particle logo (Midnight OLED), a neon outrun sunset (Synthwave), a CRT boot sequence (Terminal), an aurora over snowy peaks (Nord Frost), a newspaper front page (Paper & Ink), a Windows 98 desktop with a Start menu (Classic 98), clay slabs in 3D (Pastel Pop), opening titles in the rain (Film Noir), a San Andreas style menu (Grove Street) and a bold typographic poster (High Contrast). Press 1, 2 or 3 to open an editor, Esc to skip.
 - **UI sounds:** every theme has its own subtle sound pack (14 packs, all synthesized live, no audio files). Choose a pack, the volume and which kinds of actions make a sound, or turn them off. They stay quiet while your media plays.
+- **Interface size:** make everything bigger or smaller, from 50% to 200%, under **View ▸ Interface size** in any editor, in **Preferences ▸ Appearance**, or with **Ctrl+Alt+=** / **Ctrl+Alt+-** (**Ctrl+Alt+0** goes back to 100%).
+- **Timelines and the mouse:** in the Video and Audio tabs the mouse wheel zooms in and out at the pointer. Shift + wheel scrolls left and right, Alt + wheel scrolls up and down, and pressing the wheel and dragging moves the view in any direction. Prefer the wheel to scroll? Switch it under **View ▸ Mouse wheel** or **Preferences ▸ Interface**.
 - **Preferences** (Ctrl+,) also covers: accent colour, interface font, corner roundness, glass transparency, density, notification placement, start-up behaviour, autosave timing, undo history, defaults for new video projects and images, timeline and canvas options, fonts (preview the game fonts or **import your own** .ttf/.otf/.woff files) and storage (usage, clearing, exporting and importing your preferences).
 
 ## Your work is saved automatically
@@ -120,7 +122,8 @@ index.html          app shell
 css/app.css         design system and layout
 js/core/            UI kit (tooltips, menus, modals, color picker, command palette), icons,
                     storage/autosave/.strata files, DSP (worker), MP4/WebM/GIF muxers, demuxers,
-                    themes, UI sounds, Preferences window, silence remover, welcome screens
+                    themes, UI sounds, Preferences window, silence remover, welcome screens,
+                    interface size (uiscale.js)
 js/welcome/         one welcome screen per theme
 css/themes.css      the 15 themes
 js/video/           model + keyframes, compositor, playback, offline export, timeline,

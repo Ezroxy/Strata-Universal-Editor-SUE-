@@ -1884,6 +1884,8 @@ function menus() {
       { label: 'Mask overlay', icon: 'mask', key: '\\', checked: () => I.ruby, tip: 'While editing a mask, tint the hidden areas red.', action: () => { I.ruby = !I.ruby; I.overlay(); } },
       { sep: true },
       { label: 'Side panel', icon: 'panelRight', checked: () => !el.root.classList.contains('no-side'), tip: 'Show or hide the Layers / Adjust / History panel for more canvas room.', action: toggleSide },
+      { sep: true },
+      App.uiScaleMenu(),
     ] },
   ];
 }

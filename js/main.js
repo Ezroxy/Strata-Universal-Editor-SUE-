@@ -95,7 +95,7 @@ const openPalette = () => App.commandPalette(globalCommands());
 function showShortcuts() {
   const mod = App.modules[App.active];
   const grid = h('div', { class: 'shortcut-grid' });
-  const groups = [...(mod && mod.shortcuts || []), ['Global', [['Ctrl + K', 'Command palette'], ['Alt + 1 / 2 / 3', 'Switch to Video / Audio / Image'], ['Ctrl + ,', 'Settings'], ['?', 'This list']]]];
+  const groups = [...(mod && mod.shortcuts || []), ['Global', [['Ctrl + K', 'Command palette'], ['Alt + 1 / 2 / 3', 'Switch to Video / Audio / Image'], ['Ctrl + ,', 'Settings'], ['Ctrl + Alt + = / - / 0', 'Interface bigger / smaller / 100%'], ['?', 'This list']]]];
   const search = h('input', { class: 'field wide', placeholder: 'Filter shortcuts…', style: { height: '32px', fontSize: '12px', fontFamily: 'var(--font)' } });
   const render = () => {
     const q = search.value.toLowerCase();
@@ -124,6 +124,8 @@ App.openPalette = openPalette;
 /* ---------- keyboard routing ---------- */
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && !App.modalCount) { e.preventDefault(); openPalette(); return; }
+  // Interface size (Ctrl+Alt+= / - / 0) works everywhere, even with a window open
+  if (!App.isTyping(e.target) && App.uiScaleKey && App.uiScaleKey(e)) return;
   if (App.modalCount > 0) return;
   if (App.isTyping(e.target)) return;
   if (e.target.matches && e.target.matches('input[type=range]') && /^(arrow|page|home|end)/i.test(e.key)) return;

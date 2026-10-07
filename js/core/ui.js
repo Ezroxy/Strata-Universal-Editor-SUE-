@@ -686,6 +686,65 @@ App.fileDrop = (el, onFiles, { accept } = {}) => {
     if (files.length) onFiles(files, e);
   });
 };
+/** Mouse navigation shared by the video and audio timelines.
+    Wheel: zoom at the pointer (or scroll, if Preferences ▸ Interface ▸ Mouse wheel says so) · Ctrl+wheel / pinch: zoom ·
+    Shift+wheel or a sideways swipe: scroll left/right · Alt+wheel, or the wheel over the track names: scroll up/down ·
+    press the wheel and drag: pan in any direction.
+    zoom(factor, clientX) zooms around a point; panX(px) / panY(px) scroll by screen pixels (positive = later / lower).
+    zoomOnly: the plain wheel always zooms (e.g. over the audio ruler, which has nothing to scroll). */
+App.wheelZooms = () => setting('timelineWheel', 'zoom') !== 'scroll';
+// releasing Alt after Alt + wheel must not move keyboard focus to the browser's own menu
+let altWheel = false;
+document.addEventListener('keydown', e => { if (e.key === 'Alt') altWheel = false; }, true);
+document.addEventListener('keyup', e => { if (e.key === 'Alt' && altWheel) { altWheel = false; e.preventDefault(); } }, true);
+App.timelineNav = (el, { zoom, panX, panY, heads, zoomOnly = false }) => {
+  // wheel steps are gathered and applied once per frame, so free-spinning wheels and trackpads stay smooth
+  let acc = null;
+  const flush = () => { const a = acc; acc = null; if (a.f !== 1) zoom(a.f, a.cx); if (a.dx) panX(a.dx); if (a.dy) panY(a.dy); };
+  const add = (k, v, cx) => {
+    if (!acc) { acc = { f: 1, cx, dx: 0, dy: 0 }; requestAnimationFrame(flush); }
+    if (k === 'f') { acc.f *= v; acc.cx = cx; } else acc[k] += v;
+  };
+  el.addEventListener('wheel', e => {
+    const unit = e.deltaMode === 1 ? 32 : e.deltaMode === 2 ? el.clientHeight : 1;
+    const dx = e.deltaX * unit, dy = e.deltaY * unit;
+    const side = Math.abs(dx) > Math.abs(dy);
+    const zoomBy = d => { e.preventDefault(); if (d) add('f', Math.exp(-clamp(d, -300, 300) * 0.0018), e.clientX); };
+    if (e.ctrlKey || e.metaKey) return zoomBy(side ? dx : dy);
+    if (e.shiftKey) { e.preventDefault(); return add('dx', side ? dx : dy); }
+    if (e.altKey) { e.preventDefault(); altWheel = true; return add('dy', side ? dx : dy); }
+    if (side) { e.preventDefault(); return add('dx', dx); }
+    if (!zoomOnly && (!App.wheelZooms() || (heads && e.target.closest(heads)))) return;   // the browser scrolls up/down
+    zoomBy(dy);
+  }, { passive: false });
+  // middle button: grab and drag the timeline (capture phase, so clips, rulers and markers never see it)
+  el.addEventListener('pointerdown', e => {
+    if (e.button !== 1) return;
+    e.preventDefault(); e.stopPropagation();
+    hideTip();
+    let lx = e.clientX, ly = e.clientY;
+    document.body.classList.add('panning');
+    const mv = ev => {
+      if (!(ev.buttons & 4)) return up();
+      const dx = lx - ev.clientX, dy = ly - ev.clientY;
+      lx = ev.clientX; ly = ev.clientY;
+      if (dx) panX(dx);
+      if (dy) panY(dy);
+    };
+    const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); removeEventListener('blur', up); document.body.classList.remove('panning'); };
+    addEventListener('pointermove', mv); addEventListener('pointerup', up); addEventListener('blur', up);
+  }, true);
+  // stops the browser's own middle-click autoscroll
+  el.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); }, true);
+};
+/** "Mouse wheel" choice for the timelines' View menus. */
+App.wheelMenu = () => ({
+  label: 'Mouse wheel', icon: 'zoom', tip: 'What the mouse wheel does over the timeline. Pressing the wheel and dragging always moves the view.',
+  sub: () => [
+    { label: 'Zooms in and out', checked: App.wheelZooms(), tip: 'Wheel zooms at the mouse pointer. Shift + wheel scrolls left/right, Alt + wheel (or the wheel over the track names) scrolls up/down.', action: () => { App.setSetting('timelineWheel', 'zoom'); App.toast('Mouse wheel zooms the timeline · Shift = sideways, Alt = up/down', 'ok', 3200); } },
+    { label: 'Scrolls up and down', checked: !App.wheelZooms(), tip: 'Wheel scrolls through the tracks like a web page. Ctrl + wheel zooms, Shift + wheel scrolls left/right.', action: () => { App.setSetting('timelineWheel', 'scroll'); App.toast('Mouse wheel scrolls the timeline · Ctrl + wheel zooms', 'ok', 3200); } },
+  ],
+});
 App.splitter = (el, { axis = 'y', onDrag }) => {
   el.addEventListener('pointerdown', e => {
     e.preventDefault();

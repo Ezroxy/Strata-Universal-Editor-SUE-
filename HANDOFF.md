@@ -51,21 +51,22 @@ model behind Auto captions. You can use it in the browser or as a native Windows
   - Each theme has synthesized UI sounds.
   - A Preferences window with all settings.
 - **Polish:** autosave, a command palette (Ctrl+K), a shortcuts sheet (?), and hover explainers on every control.
+- **Interface size** (50–200 %, View ▸ Interface size, Preferences ▸ Appearance, Ctrl+Alt+= / - / 0).
+- **Timeline mouse control:** the wheel zooms at the pointer (or scrolls, per Preferences), and pressing the wheel and
+  dragging pans the video and audio timelines.
 - **Windows desktop app:**
   - Single instance; remembers the window position.
   - Downloads go to the Downloads folder.
   - Autosave is flushed when the window closes.
 
 ### In progress
-- Nothing is half-done. The last task (a QA pass plus new features in all three editors) is finished and tested in
+- Nothing is half-done. The last task (Interface size, wheel zoom and middle-button panning) is finished and tested in
   headless Chromium. **The Windows exe has not been rebuilt since** (the work was done in a Linux cloud session), so run
   `build-desktop.bat` once on Windows.
 - `qa/harness.js` is a temporary QA script that runs every menu command in the browser preview. It isn't part of the app.
 
 ### What's next (ideas, not started)
 - Image features that aren't implemented yet: Vanishing Point, Neural Filters and Smart Filters.
-- An "Interface size" (zoom) setting. In the desktop app this could go through wry's `WebView::zoom`, because CSS `zoom`
-  breaks the canvas pointer maths.
 - Subject, sky and depth masks in Camera Raw are heuristics. A small local segmentation model would make them much better.
 - Cross-platform desktop builds (macOS / Linux). wry and tao support them, but only Windows has been built and tested.
 - Smaller ideas from the QA pass: LUT (.cube) import for video and Camera Raw, a de-click / de-clip repair effect,
@@ -89,7 +90,8 @@ model behind Auto captions. You can use it in the browser or as a native Windows
   - **Rebuild the exe after changing any web files.**
 - The user (Mouad) wants polished, "10x" quality. Every control needs a hover explainer, which is the `tip:` attribute on elements. Write user-facing text in plain language.
 
-> **START HERE:** there is no open task. The latest finished work is **"QA pass + new features"** below.
+> **START HERE:** there is no open task. The latest finished work is **"Interface size, wheel zoom, middle-button pan"**
+> below.
 
 ## Earlier request — DONE (2026-10-07, second request of the day)
 "Make the Image section as feature-packed as Photoshop, add Camera Raw Filter with the same features, and add a local
@@ -194,7 +196,55 @@ speech-to-text model for auto-captioning videos." The user picked **Whisper Base
 - Exe: smoke-tested after the user closed their copy (live recording via the blob-URL AudioWorklet works under COEP; the xfer
   receivers are registered). The parked old build in `%TEMP%\claude\old-builds\` was deleted. The Desktop exe is current.
 
-## Latest request — DONE (2026-10-07, cloud session): QA pass + new features
+## Latest request — DONE (2026-10-07, cloud session): Interface size, wheel zoom, middle-button pan
+User: "scale the UI of the whole program up or down with a slider … the scroll wheel zooms the video and audio timelines …
+press the scroll wheel to move through the timeline", with a QA pass so there are no bugs.
+
+### Interface size (`js/core/uiscale.js`, loaded in `<head>` right after `themes.js`)
+- Applies CSS `zoom` to `<html>` plus `--uiz` on `:root`. Setting `uiScale` (0.5–2), applied before the first paint.
+- **Why it doesn't break the pointer maths:** Chromium's standardized CSS zoom (128+) reports rectangles and mouse
+  positions in screen pixels, but sizes, scroll offsets and CSS lengths in unscaled pixels. Mixing them was why zoom was
+  skipped before. `uiscale.js` puts everything in unscaled page pixels, the way real browser zoom does:
+  - `MouseEvent` `clientX/Y`, `pageX/Y`, `x/y` and `movementX/Y` are divided by the scale.
+  - `getBoundingClientRect` / `getClientRects` (Element and Range) are divided too.
+  - `innerWidth/innerHeight` are divided, `devicePixelRatio` is multiplied (so canvases stay crisp), and `elementFromPoint`
+    and friends multiply their arguments back.
+  - Width/height `@media` rules are rewritten through the CSSOM (`(max-width: 1500px)` → `2250px` at 150 %), including
+    stylesheets injected later into `<head>`.
+  - Engines without `Element.prototype.currentCSSZoom` get no shims and the setting is disabled (`App.uiScaleSupported`).
+- **Rules for new code:**
+  - In CSS, never write `vh` / `vw`; write `calc(80 * var(--vh))` (tokens defined at the top of `app.css`).
+  - CSS injected at runtime goes through `App.fixViewportUnits(css)` (`welcome.js` already does).
+  - Nothing else is needed: pointer code written the usual way just works.
+- UI: View ▸ Interface size in all three editors (`App.uiScaleMenu()`), the fine-tune window (`App.uiScaleDialog()`, slider
+  applies on release so it doesn't move under the mouse), Preferences ▸ Appearance ▸ Interface size, and Ctrl+Alt+= / - / 0
+  (`App.uiScaleKey`, routed in `main.js` before the modal check). API: `App.uiScale()`, `App.setUiScale(z, {toast})`,
+  `App.stepUiScale(±1)`, event `'uiscale'`.
+
+### Timeline mouse control (`App.timelineNav` in `js/core/ui.js`)
+- Shared by the video timeline (`T.body`) and the audio editor (`el.tracks`, plus the ruler and marker strip with
+  `zoomOnly`). Callbacks: `zoom(factor, clientX)`, `panX(px)`, `panY(px)`.
+- Wheel = zoom at the pointer (setting `timelineWheel: 'zoom'`, default) or native scroll (`'scroll'`). Ctrl+wheel and
+  pinch always zoom, Shift+wheel and sideways swipes scroll left/right, Alt+wheel scrolls up/down, and the wheel over the
+  track names scrolls. Wheel steps are batched per animation frame.
+- Middle button + drag pans both ways (capture-phase `pointerdown`, so clips, markers and rulers never see it; the browser's
+  autoscroll is suppressed). View ▸ Mouse wheel (`App.wheelMenu()`) and Preferences ▸ Interface ▸ Timelines switch modes.
+
+### Tested (headless Chromium, real mouse via Playwright)
+- At 75 %, 100 % and 150 %:
+  - ruler clicks, clip drags, audio click and selection, and brush dots land exactly;
+  - context menus, menubar and submenus, tooltips and Preferences are placed correctly;
+  - Camera Raw samplers and Liquify warps match between 100 % and 150 %.
+- All 15 welcome screens fill the window at 150 % and look like a smaller window at 100 %. All 175 rewritten welcome-screen
+  values compute identically at 100 %.
+- Wheel zoom keeps the time under the pointer fixed (also for a burst of 8 wheel steps). Shift, Alt, the track-name column,
+  Ctrl and scroll mode all work. Middle-drag pans by exactly the mouse distance and never moves clips or changes the selection.
+- Shortcuts, the fine-tune window, the Preferences slider, a preferences reset, out-of-range values and a reload all work.
+- Full menu sweeps (`qa/harness.js`) at 100 % and 150 %: no errors.
+- **Testing tip:** `QA.drag` builds synthetic events from page coordinates, so run it at 100 %. At other sizes, drive
+  Playwright's real mouse and multiply page coordinates by `App.uiScale()`.
+
+## Earlier request — DONE (2026-10-07, cloud session): QA pass + new features
 User: "Do a round of QA and testing … full read of the whole codebase. Squash any bugs, and add features you think the
 image, audio and video editors should have." Done in a Claude Code cloud session (Linux, headless Chromium) on branch
 `claude/handoff-continuation-h2cb0d`. Commits: "Fix bugs found in a full QA pass", "Remove silences: …", then the
@@ -371,8 +421,7 @@ snapDefault rippleDefault stillDur audioView zeroSnapDefault. User fonts: Indexe
 (`App.addUserFont`, `App.removeUserFont`, `App.loadUserFonts` at boot).
 
 ### Ideas not done
-- "Interface size" (zoom) was skipped: CSS `zoom` breaks the canvas pointer maths. In the desktop app it could be done safely
-  through an IPC message to wry's `WebView::zoom`.
+- ("Interface size" was done later — see "Interface size, wheel zoom, middle-button pan" above.)
 
 ### Game fonts: done
 - **Tools** live in `tools/fonts/`:

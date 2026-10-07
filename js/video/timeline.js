@@ -425,7 +425,7 @@ T.build = root => {
     h('div', { class: 'grow' }),
     T.durLabel = h('span', { class: 'mono', style: { color: 'var(--muted)', fontSize: '11px', marginRight: '8px', whiteSpace: 'nowrap' }, title: 'Timeline length', tip: 'Total length of your edit (end of the last clip).' }),
     btn({ icon: 'zoomOut', title: 'Zoom out', key: '-', tip: 'See more of the timeline at once.', onClick: () => T.zoomBy(1 / 1.5) }),
-    T.zoomRange = h('input', { type: 'range', class: 'tl-zoom', min: 0, max: 100, step: 0.5, title: 'Timeline zoom', tip: 'Drag to zoom the timeline. Ctrl + mouse wheel over the tracks zooms around the cursor.' }),
+    T.zoomRange = h('input', { type: 'range', class: 'tl-zoom', min: 0, max: 100, step: 0.5, title: 'Timeline zoom', tip: 'Drag to zoom the timeline. The mouse wheel over the tracks zooms around the pointer; press the wheel and drag to move around.' }),
     btn({ icon: 'zoomIn', title: 'Zoom in', key: '=', tip: 'Zoom in for frame-accurate cutting.', onClick: () => T.zoomBy(1.5) }),
     btn({ icon: 'fit', title: 'Zoom to fit', key: '\\', tip: 'Fits the whole edit into view.', onClick: () => T.zoomFit() }),
   );
@@ -457,14 +457,12 @@ T.build = root => {
   root.append(bar, T.body);
 
   T.body.addEventListener('scroll', () => T.drawRuler());
-  T.body.addEventListener('wheel', e => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      T.zoomBy(e.deltaY < 0 ? 1.2 : 1 / 1.2, e.clientX);
-    } else if (e.shiftKey && !e.deltaX) {
-      e.preventDefault(); T.body.scrollLeft += e.deltaY;
-    }
-  }, { passive: false });
+  App.timelineNav(T.body, {
+    zoom: (f, cx) => T.zoomBy(f, cx),
+    panX: d => { T.body.scrollLeft += d; },
+    panY: d => { T.body.scrollTop += d; },
+    heads: '.tl-head, .tl-corner',
+  });
   new ResizeObserver(() => T.render()).observe(T.body);
   setupRuler();
   setupLanes();
