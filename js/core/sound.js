@@ -6,7 +6,7 @@
 const App = window.App;
 
 /* ---------- engine ---------- */
-let ctx = null, master = null, verbIn = null, noiseBuf = null, irBuf = null;
+let ctx = null, master = null, verbIn = null, hazeIn = null, noiseBuf = null, irBuf = null, hazeBuf = null;
 function init() {
   if (ctx) return true;
   // never create an AudioContext before the person has interacted with the page
@@ -21,12 +21,23 @@ function init() {
   const verb = ctx.createConvolver(); verb.buffer = ir;
   verbIn = ctx.createGain(); verbIn.gain.value = 0.5;
   verbIn.connect(verb); verb.connect(master);
+  // a much bigger, darker room for the Dream pack's slowed-down sounds
+  const hl = Math.round(ctx.sampleRate * 3.4), hz = ctx.createBuffer(2, hl, ctx.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = hz.getChannelData(c); for (let i = 0; i < hl; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / hl, 2.2); }
+  hazeBuf = hz;
+  hazeIn = makeHaze(ctx, master);
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
   const nd = noiseBuf.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
   setVolume();
   return true;
 }
 const setting = (k, d) => (App.settings && App.settings[k] != null ? App.settings[k] : d);
+function makeHaze(c, dest) {
+  const inp = c.createGain(), verb = c.createConvolver(), lp = c.createBiquadFilter();
+  verb.buffer = hazeBuf; lp.type = 'lowpass'; lp.frequency.value = 3200; inp.gain.value = 0.55;
+  inp.connect(verb); verb.connect(lp); lp.connect(dest);
+  return inp;
+}
 function setVolume() { if (master) master.gain.value = 0.34 * Math.pow(setting('soundVolume', 55) / 100, 1.5); }
 
 const T0 = () => ctx.currentTime + 0.004;
@@ -34,6 +45,7 @@ function out(node, o) {
   if (o.pan) { const p = ctx.createStereoPanner(); p.pan.value = o.pan; node.connect(p); node = p; }
   node.connect(master);
   if (o.wet) { const w = ctx.createGain(); w.gain.value = o.wet; node.connect(w); w.connect(verbIn); }
+  if (o.haze) { const w = ctx.createGain(); w.gain.value = o.haze; node.connect(w); w.connect(hazeIn); }
 }
 let trimGain = 1;   // per-sound level correction (see TRIM), applied to every voice of the sound being played
 function shape(g, t, a, dur, vol, swell) {
@@ -84,9 +96,9 @@ function fm(o) {
   car.start(t); mod.start(t); car.stop(t + dur + 0.05); mod.stop(t + dur + 0.05);
 }
 /* little instruments built from the voices */
-const chime = (f, o = {}) => { [[1, 1], [2.01, 0.42], [2.76, 0.3], [5.4, 0.12]].forEach(([k, v], i) => tone({ f: f * k, dur: (o.dur ?? 0.5) / (1 + i * 0.6), vol: (o.vol ?? 0.12) * v, at: o.at, wet: o.wet ?? 0.25, a: 0.002 })); };
+const chime = (f, o = {}) => { [[1, 1], [2.01, 0.42], [2.76, 0.3], [5.4, 0.12]].forEach(([k, v], i) => tone({ f: f * k, dur: (o.dur ?? 0.5) / (1 + i * 0.6), vol: (o.vol ?? 0.12) * v, at: o.at, wet: o.wet ?? 0.25, haze: o.haze, a: 0.002 })); };
 const pluck = (f, o = {}) => tone({ type: 'triangle', f, dur: o.dur ?? 0.08, vol: o.vol ?? 0.18, at: o.at, cutoff: o.cutoff ?? 5000, wet: o.wet });
-const whoosh = (f1, f2, o = {}) => noise({ f: f1, f2, q: o.q ?? 1.4, dur: o.dur ?? 0.16, vol: o.vol ?? 0.07, swell: 0.45, at: o.at, wet: o.wet });
+const whoosh = (f1, f2, o = {}) => noise({ f: f1, f2, q: o.q ?? 1.4, dur: o.dur ?? 0.16, vol: o.vol ?? 0.07, swell: 0.45, at: o.at, wet: o.wet, haze: o.haze });
 const tap = (f, o = {}) => noise({ f, q: o.q ?? 1.6, dur: o.dur ?? 0.01, vol: o.vol ?? 0.3, at: o.at });
 const thump = (f, o = {}) => tone({ f, f2: f * (o.drop ?? 0.55), dur: o.dur ?? 0.06, vol: o.vol ?? 0.3, at: o.at });
 const seq = (notes, fn, gap) => notes.forEach((n, i) => fn(n, i * gap));
@@ -331,6 +343,23 @@ const PACKS = {
     notify: () => tone({ f: 1046, dur: 0.08, vol: 0.12 }),
     switch: () => tone({ f: 700, f2: 1000, dur: 0.1, vol: 0.12 }),
   } },
+  dream: { name: 'Dream', desc: 'Slowed-down XP clicks and chimes drifting in a huge soft room — made for the Windows XP Dreamcore theme.', s: {
+    click: () => { tap(1700, { q: 1.4, dur: 0.02, vol: 0.12 }); tone({ f: 523, dur: 0.14, vol: 0.05, haze: 0.5 }); },
+    select: () => tone({ f: 659, dur: 0.16, vol: 0.06, haze: 0.55 }),
+    on: () => tone({ f: 523, f2: 784, glide: 0.14, dur: 0.24, vol: 0.06, haze: 0.6 }),
+    off: () => tone({ f: 784, f2: 523, glide: 0.14, dur: 0.24, vol: 0.06, haze: 0.6 }),
+    tick: () => tap(2400, { q: 2, dur: 0.008, vol: 0.06 }),
+    open: () => [262, 330, 392, 494].forEach((f, i) => tone({ f, dur: 1.1, vol: 0.035, swell: 0.45, at: i * 0.035, haze: 0.8 })),
+    close: () => { whoosh(1400, 400, { vol: 0.04, dur: 0.4, haze: 0.6 }); tone({ f: 392, f2: 262, dur: 0.5, vol: 0.035, haze: 0.7 }); },
+    menu: () => tone({ type: 'triangle', f: 587, dur: 0.12, vol: 0.08, cutoff: 2400, haze: 0.45 }),
+    grab: () => tone({ type: 'triangle', f: 330, dur: 0.1, vol: 0.08, cutoff: 1500, haze: 0.4 }),
+    drop: () => { thump(110, { vol: 0.14 }); tone({ f: 220, dur: 0.3, vol: 0.04, haze: 0.6 }); },
+    success: () => { chime(988, { vol: 0.07, dur: 1, haze: 0.7 }); chime(1318, { vol: 0.06, dur: 1, at: 0.16, haze: 0.7 }); },
+    error: () => { tone({ type: 'square', f: 294, dur: 0.35, vol: 0.025, cutoff: 900, haze: 0.6 }); tone({ type: 'square', f: 220, dur: 0.5, vol: 0.025, cutoff: 800, at: 0.2, haze: 0.7 }); },
+    warn: () => chime(523, { vol: 0.08, dur: 1.2, haze: 0.7 }),
+    notify: () => { chime(784, { vol: 0.05, dur: 0.9, haze: 0.7 }); chime(1175, { vol: 0.04, dur: 0.9, at: 0.12, haze: 0.7 }); },
+    switch: () => { whoosh(600, 1800, { vol: 0.04, dur: 0.35, haze: 0.6 }); tone({ f: 392, f2: 523, glide: 0.2, dur: 0.4, vol: 0.04, haze: 0.7 }); },
+  } },
 };
 /* Level corrections in dB so every pack sounds about as loud as "Soft" (measured with App.soundMeasure:
    loudest 30 ms window per sound; Minimal is deliberately 6 dB quieter). */
@@ -342,6 +371,7 @@ const TRIM = {
   minimal: { click: 5, select: 4, on: 5, off: 4, tick: 3, open: 5, close: 4, menu: 5, grab: 3, drop: 2, success: 4, warn: 1, notify: 2, switch: 2 },
   synth: { click: 4, select: 6, on: 10, off: 10, tick: 5, close: 5, menu: 9, grab: 10, drop: 8, success: 9, error: -2, warn: 6, notify: -2, switch: 6 },
   beep: { click: 11, select: 10, on: 10, off: 9, tick: 8, open: 9, close: 7, menu: 9, grab: 9, drop: 7, success: 10, error: 1, warn: 7, notify: 8, switch: 7 },
+  dream: { click: 6, select: 4, on: 5, off: 4, tick: 22, close: 5, menu: 1, grab: 3, drop: -1, error: 7, warn: -4, switch: 4 },
   frost: { click: 7, select: 8, on: 6, off: 7, tick: 8, open: 4, close: 4, menu: 7, grab: 6, drop: 5, success: 4, error: -2, warn: 6, notify: 3, switch: 2 },
   paper: { click: 15, select: 20, on: 20, off: 20, tick: 16, open: 9, close: 8, menu: 4, grab: 13, drop: 14, success: -6, error: 15, warn: 16, notify: 2, switch: 7 },
   classic: { click: 20, select: 18, on: 10, off: 10, tick: 9, open: 20, close: 17, menu: 16, grab: 19, drop: 19, success: -2, error: -2, warn: -3, notify: -1, switch: 4 },
@@ -397,12 +427,13 @@ App.on('setting', k => { if (k === 'soundVolume') setVolume(); });
 /** Render one sound offline at the current volume and return its peak and RMS level in dBFS (used to keep the packs balanced). */
 App.soundMeasure = async (pack, name, v = 0.5) => {
   if (!init() || !PACKS[pack] || !PACKS[pack].s[name]) return null;
-  const live = { ctx, master, verbIn }, sr = ctx.sampleRate;
+  const live = { ctx, master, verbIn, hazeIn }, sr = ctx.sampleRate;
   const off = new OfflineAudioContext(2, Math.round(sr * 1.8), sr);
   ctx = off; master = off.createGain(); master.gain.value = live.master.gain.value; master.connect(off.destination);
   const verb = off.createConvolver(); verb.buffer = irBuf;
   verbIn = off.createGain(); verbIn.gain.value = 0.5; verbIn.connect(verb); verb.connect(master);
-  try { setTrim(pack, name); PACKS[pack].s[name](v); } finally { ({ ctx, master, verbIn } = live); }
+  hazeIn = makeHaze(off, master);
+  try { setTrim(pack, name); PACKS[pack].s[name](v); } finally { ({ ctx, master, verbIn, hazeIn } = live); }
   const buf = await off.startRendering();
   let peak = 0, st = 0;
   const L = buf.getChannelData(0), R = buf.getChannelData(1), win = Math.round(sr * 0.03);

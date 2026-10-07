@@ -1,18 +1,15 @@
-/* Strata Studio — Windows XP shell. While the XP theme is on, Strata turns into an XP desktop:
-   a Bliss-style wallpaper painted on the fly, the top bar becomes the taskbar (Start button, one button per editor,
-   a notification area with a clock), an XP Start menu, a Turn Off Computer dialog, and window chrome.
-   Three looks (html[data-xp], setting `xpStyle`):
-     luna  — one Luna Blue program window; the panes look like XP's own programs (Movie Maker, Paint, Explorer)
-     desk  — every panel is its own XP window floating on the desktop
-     dream — the XP you remember from a dream: chunky 3D windows on an endless hill
-   All styling lives in css/xp.css. */
+/* Strata Studio — Windows XP Dreamcore shell: the XP you remember from a dream.
+   While the Windows XP theme is on, Strata becomes an XP desktop:
+   - an endless green hill under a deep blue sky, painted on the fly (no photo), with clouds that slowly drift
+   - every panel is a chunky 3D XP window; its title-bar buttons work (maximize, hide side panels, …)
+   - the top bar becomes the taskbar: Start button, one button per editor, a notification area with a clock
+   - an XP Start menu, a Turn Off Computer dialog and desktop icons (minimize the main window to see them)
+   All styling lives in css/xp.css; the welcome screen is js/welcome/xp.js. */
 (() => {
 'use strict';
 const App = window.App;
 const { h } = App;
-const STYLES = ['luna', 'desk', 'dream'];
 const root = document.documentElement;
-const style = () => STYLES.includes(App.settings.xpStyle) ? App.settings.xpStyle : 'luna';
 const svgUri = s => 'data:image/svg+xml,' + encodeURIComponent(s);
 const img = (s, size = 16, cls = '') => h('img', { src: svgUri(s), width: size, height: size, alt: '', class: cls, draggable: 'false' });
 
@@ -106,10 +103,14 @@ const FLAG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26 22"><defs>
   <path d="M5.2 8.6c4-1.6 8.5 1.4 15-.4l-1.2 4.8c-6.3 1.8-10.8-1.2-14.8.4z" fill="url(#g)"/>
   <path d="M4.4 15c4-1.6 8.5 1.4 15-.4L18.2 19.4c-6.3 1.8-10.8-1.2-14.8.4z" fill="url(#b)"/></g></svg>`;
 // window caption buttons (minimize · maximize · close) as one strip, and small panel/window icons
-const CAP_BTNS = (active = true) => {
-  const b = (x, red, glyph) => `<g transform="translate(${x} 0)"><rect x=".5" y=".5" width="20" height="20" rx="3" fill="url(#${red ? 'r' : 'b'})" stroke="#fff" opacity="${active ? 1 : .85}"/><rect x="1.5" y="1.5" width="18" height="8" rx="2" fill="#fff" opacity=".18"/>${glyph}</g>`;
-  const defs = lg('b', active ? [[0, '#5c9dff'], [.5, '#2667e8'], [1, '#1a52d6']] : [[0, '#aec4f2'], [1, '#8aa6e6']]) + lg('r', active ? [[0, '#f09c7c'], [.5, '#e0582c'], [1, '#c3401a']] : [[0, '#e2b7a8'], [1, '#d09684']]);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 65 21" width="65" height="21"><defs>${defs}</defs>${b(0, 0, '<rect x="5" y="13" width="7" height="3" fill="#fff"/>')}${b(22, 0, '<rect x="5" y="4.5" width="11" height="11" fill="none" stroke="#fff" stroke-width="1.2"/><rect x="5" y="4.5" width="11" height="2.6" fill="#fff"/>')}${b(44, 1, '<path d="m6 6 9 9m0-9-9 9" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>')}</svg>`;
+const CAP_BTNS = (active = true, hot = '', only = '') => {
+  const glyphs = { min: '<rect x="5" y="13" width="7" height="3" fill="#fff"/>', max: '<rect x="5" y="4.5" width="11" height="11" fill="none" stroke="#fff" stroke-width="1.2"/><rect x="5" y="4.5" width="11" height="2.6" fill="#fff"/>', close: '<path d="m6 6 9 9m0-9-9 9" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>' };
+  const fill = k => k === 'close' ? (hot === k ? 'rh' : 'r') : (hot === k ? 'bh' : 'b');
+  const b = (x, k) => `<g transform="translate(${x} 0)"><rect x=".5" y=".5" width="20" height="20" rx="3" fill="url(#${fill(k)})" stroke="#fff"/><rect x="1.5" y="1.5" width="18" height="8" rx="2" fill="#fff" opacity=".18"/>${glyphs[k]}</g>`;
+  const defs = lg('b', active ? [[0, '#5c9dff'], [.5, '#2667e8'], [1, '#1a52d6']] : [[0, '#aec4f2'], [1, '#8aa6e6']]) + lg('bh', [[0, '#9cc6ff'], [.5, '#4d8bff'], [1, '#2f6cf0']])
+    + lg('r', active ? [[0, '#f09c7c'], [.5, '#e0582c'], [1, '#c3401a']] : [[0, '#e2b7a8'], [1, '#d09684']]) + lg('rh', [[0, '#ffbea4'], [.5, '#f47a50'], [1, '#d9512b']]);
+  const keys = only ? [only] : ['min', 'max', 'close'], w = keys.length * 22 - 1;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} 21" width="${w}" height="21"><defs>${defs}</defs>${keys.map((k, i) => b(i * 22, k)).join('')}</svg>`;
 };
 const capTitle = (title, icon) => `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="25" viewBox="0 0 900 25">
   <image href="${svgUri(icon)}" x="5" y="4.5" width="16" height="16"/>
@@ -117,77 +118,118 @@ const capTitle = (title, icon) => `<svg xmlns="http://www.w3.org/2000/svg" width
   <text x="24" y="16" font-family="'Trebuchet MS', Tahoma, sans-serif" font-weight="700" font-size="13" fill="#fff">${title.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</text></svg>`;
 const cssUrl = s => `url("${svgUri(s)}")`;
 
-/* ---------- Bliss-style wallpaper, painted (no photo needed) ---------- */
+/* ---------- the dream wallpaper: sky (CSS), drifting clouds and the hill (painted once, no photo) ---------- */
 const rand = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-const walls = {};
-function paintWall(kind) {
-  const W = 1920, H = 1080, c = document.createElement('canvas'); c.width = W; c.height = H;
-  const g = c.getContext('2d'), R = rand(kind === 'dream' ? 7 : 11);
-  const dream = kind === 'dream';
-  // sky
-  const sky = g.createLinearGradient(0, 0, 0, H * .7);
-  if (dream) { sky.addColorStop(0, '#0638c9'); sky.addColorStop(.45, '#2f7cf2'); sky.addColorStop(.8, '#8cc4ff'); sky.addColorStop(1, '#e6f4ff'); }
-  else { sky.addColorStop(0, '#1c5bd2'); sky.addColorStop(.38, '#3f84e4'); sky.addColorStop(.72, '#93c1f1'); sky.addColorStop(1, '#dbeafa'); }
-  g.fillStyle = sky; g.fillRect(0, 0, W, H);
-  // clouds: soft clusters and long thin streaks
-  const blob = (x, y, r, a, flat = .55) => { const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(255,255,255,${a})`); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.save(); g.translate(x, y); g.scale(1, flat); g.translate(-x, -y); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.restore(); };
-  const clusters = dream ? [[.16, .2, 1.5], [.5, .12, 1.2], [.83, .28, 1.6], [.36, .38, 1], [.68, .45, .9]] : [[.12, .16, 1], [.3, .31, .8], [.58, .12, .9], [.82, .3, 1.1], [.95, .1, .7], [.46, .44, .6]];
-  for (const [cx, cy, s] of clusters) {
-    const n = dream ? 90 : 60;
-    for (let i = 0; i < n; i++) {
-      const dx = (R() - .5) * W * .22 * s, dy = (R() - .6) * H * .08 * s;
-      blob(cx * W + dx, cy * H + dy, (dream ? 70 : 45) * s * (.4 + R()), dream ? .5 : .32, dream ? .7 : .5);
+const canvas2d = (w, hh) => { const c = document.createElement('canvas'); c.width = w; c.height = hh; return [c, c.getContext('2d')]; };
+let walls = null;
+function paintWalls() {
+  if (walls) return walls;
+  // clouds: a strip that tiles left-to-right, so it can drift forever
+  const CW = 2400, CH = 760, [cc, g] = canvas2d(CW, CH), R = rand(7);
+  const blob = (x, y, r, col, flat) => {
+    for (const dx of [-CW, 0, CW]) {
+      const gr = g.createRadialGradient(x + dx, y, 0, x + dx, y, r); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.save(); g.translate(x + dx, y); g.scale(1, flat); g.translate(-(x + dx), -y); g.fillStyle = gr; g.beginPath(); g.arc(x + dx, y, r, 0, 7); g.fill(); g.restore();
     }
-    if (dream) for (let i = 0; i < 30; i++) blob(cx * W + (R() - .5) * W * .14 * s, cy * H + (R() - .3) * 30, 60 * s * (.4 + R()), .55, .8);
+  };
+  const clusters = [[.08, .3, 1.3], [.3, .16, 1], [.5, .42, 1.5], [.7, .2, 1.1], [.88, .48, 1.2], [.2, .62, .8], [.62, .7, .7]];
+  for (const [cx, cy, s] of clusters) {
+    const x0 = cx * CW, y0 = cy * CH;
+    for (let i = 0; i < 70; i++) blob(x0 + (R() - .5) * 360 * s, y0 + (R() - .65) * 70 * s, 70 * s * (.45 + R()), 'rgba(255,255,255,.5)', .62);
+    for (let i = 0; i < 26; i++) blob(x0 + (R() - .5) * 260 * s, y0 + (R() - .2) * 40 * s, 52 * s * (.4 + R()), 'rgba(255,255,255,.75)', .8);
+    for (let i = 0; i < 18; i++) blob(x0 + (R() - .5) * 300 * s, y0 + 26 * s + R() * 18 * s, 60 * s * (.4 + R()), 'rgba(170,196,240,.28)', .35);
   }
-  if (!dream) for (let i = 0; i < 26; i++) { const x = R() * W, y = H * (.06 + R() * .4); g.save(); g.translate(x, y); g.rotate(-.12 + R() * .1); blob(0, 0, 160 + R() * 260, .16, .08); g.restore(); }
-  // the far hill on the right, hazy
-  g.beginPath(); g.moveTo(W * .48, H); g.bezierCurveTo(W * .62, H * .7, W * .78, H * .615, W, H * .6); g.lineTo(W, H); g.closePath();
-  let hg = g.createLinearGradient(0, H * .6, 0, H * .8); hg.addColorStop(0, dream ? '#59c73f' : '#6aa94a'); hg.addColorStop(1, dream ? '#1f8a17' : '#2f6e1e'); g.fillStyle = hg; g.fill();
-  // the main hill
+  for (let i = 0; i < 14; i++) { const x = R() * CW, y = R() * CH * .9; g.save(); g.translate(x, y); g.rotate(-.08 + R() * .06); blob(0, 0, 200 + R() * 280, 'rgba(255,255,255,.18)', .06); g.restore(); }
+  // the hill, on a transparent sky
+  const W = 1920, H = 1080, [hc, k] = canvas2d(W, H), Q = rand(11);
+  k.beginPath(); k.moveTo(W * .48, H); k.bezierCurveTo(W * .62, H * .7, W * .78, H * .615, W, H * .6); k.lineTo(W, H); k.closePath();
+  let hg = k.createLinearGradient(0, H * .6, 0, H * .8); hg.addColorStop(0, '#59c73f'); hg.addColorStop(1, '#1f8a17'); k.fillStyle = hg; k.fill();
   const hill = new Path2D();
   hill.moveTo(0, H * .64); hill.bezierCurveTo(W * .14, H * .585, W * .3, H * .545, W * .43, H * .55); hill.bezierCurveTo(W * .58, H * .555, W * .7, H * .655, W * .82, H * .705);
   hill.bezierCurveTo(W * .9, H * .735, W * .96, H * .72, W, H * .705); hill.lineTo(W, H); hill.lineTo(0, H); hill.closePath();
-  hg = g.createLinearGradient(0, H * .55, 0, H);
-  if (dream) { hg.addColorStop(0, '#b7f24a'); hg.addColorStop(.3, '#5fd02a'); hg.addColorStop(1, '#0f7a0c'); }
-  else { hg.addColorStop(0, '#a6d343'); hg.addColorStop(.25, '#6cb52f'); hg.addColorStop(.6, '#3f8c1c'); hg.addColorStop(1, '#2a6c12'); }
-  g.fillStyle = hg; g.fill(hill);
-  g.save(); g.clip(hill);
-  // sunlight on the crest, shade in the valley
-  let lgt = g.createRadialGradient(W * .3, H * .58, 10, W * .3, H * .6, W * .45); lgt.addColorStop(0, 'rgba(240,255,170,.45)'); lgt.addColorStop(1, 'rgba(240,255,170,0)'); g.fillStyle = lgt; g.fillRect(0, 0, W, H);
-  lgt = g.createRadialGradient(W * .85, H * .95, 10, W * .85, H * .95, W * .5); lgt.addColorStop(0, 'rgba(0,40,0,.35)'); lgt.addColorStop(1, 'rgba(0,40,0,0)'); g.fillStyle = lgt; g.fillRect(0, 0, W, H);
-  // grass: short strokes, bigger toward the bottom (perspective)
-  const n = dream ? 26000 : 52000;
-  for (let i = 0; i < n; i++) {
-    const x = R() * W, y = H * .53 + R() * R() * H * .5 + R() * H * .02, depth = (y - H * .53) / (H * .47);
-    const len = 1.5 + depth * (dream ? 7 : 9) * R(), lit = 28 + R() * 30 - depth * 10 + (x < W * .5 ? 6 : 0);
-    g.strokeStyle = `hsla(${dream ? 95 + R() * 25 : 82 + R() * 22},${dream ? 85 : 60}%,${lit}%,${.35 + R() * .4})`;
-    g.lineWidth = .6 + depth * 1.4;
-    g.beginPath(); g.moveTo(x, y); g.lineTo(x + (R() - .5) * len * .5, y - len); g.stroke();
+  hg = k.createLinearGradient(0, H * .55, 0, H); hg.addColorStop(0, '#b7f24a'); hg.addColorStop(.3, '#5fd02a'); hg.addColorStop(1, '#0f7a0c');
+  k.fillStyle = hg; k.fill(hill);
+  k.save(); k.clip(hill);
+  let lgt = k.createRadialGradient(W * .3, H * .58, 10, W * .3, H * .6, W * .45); lgt.addColorStop(0, 'rgba(240,255,170,.45)'); lgt.addColorStop(1, 'rgba(240,255,170,0)'); k.fillStyle = lgt; k.fillRect(0, 0, W, H);
+  lgt = k.createRadialGradient(W * .85, H * .95, 10, W * .85, H * .95, W * .5); lgt.addColorStop(0, 'rgba(0,40,0,.35)'); lgt.addColorStop(1, 'rgba(0,40,0,0)'); k.fillStyle = lgt; k.fillRect(0, 0, W, H);
+  for (let i = 0; i < 26000; i++) {
+    const x = Q() * W, y = H * .53 + Q() * Q() * H * .5 + Q() * H * .02, depth = (y - H * .53) / (H * .47);
+    const len = 1.5 + depth * 7 * Q(), lit = 28 + Q() * 30 - depth * 10 + (x < W * .5 ? 6 : 0);
+    k.strokeStyle = `hsla(${95 + Q() * 25},85%,${lit}%,${.35 + Q() * .4})`; k.lineWidth = .6 + depth * 1.4;
+    k.beginPath(); k.moveTo(x, y); k.lineTo(x + (Q() - .5) * len * .5, y - len); k.stroke();
   }
-  g.restore();
-  // a bright rim along the crest
-  g.save(); g.strokeStyle = dream ? 'rgba(255,255,220,.6)' : 'rgba(235,250,200,.35)'; g.lineWidth = 3; g.filter = 'blur(2px)'; g.stroke(hill); g.restore();
-  if (dream) {   // dream: a fine dither / film grain over everything
-    const id = g.getImageData(0, 0, W, H), d = id.data;
-    for (let i = 0; i < d.length; i += 4) { const k = (R() - .5) * 26; d[i] += k; d[i + 1] += k; d[i + 2] += k; }
-    g.putImageData(id, 0, 0);
-  }
-  return c.toDataURL('image/jpeg', .9);
+  k.restore();
+  k.save(); k.strokeStyle = 'rgba(255,255,220,.6)'; k.lineWidth = 3; k.filter = 'blur(2px)'; k.stroke(hill); k.restore();
+  const id = k.getImageData(0, H >> 1, W, H >> 1), d = id.data;   // a fine grain over the grass
+  for (let i = 0; i < d.length; i += 4) if (d[i + 3]) { const n = (Q() - .5) * 26; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
+  k.putImageData(id, 0, H >> 1);
+  return (walls = { clouds: cc.toDataURL('image/png'), hill: hc.toDataURL('image/png') });
 }
-const wall = kind => walls[kind] || (walls[kind] = paintWall(kind));
 
-/* ---------- the shell ---------- */
-let on = false, el = {}, tick = 0, startOpen = false;
+/* ---------- windows: one per panel ---------- */
 const MODES = [['video', 'Strata Video', 'Edit movies on a timeline'], ['audio', 'Strata Audio', 'Record, clean up and mix sound'], ['image', 'Strata Image', 'Paint and retouch pictures']];
 const docName = id => id === 'video' ? App.V && App.V.name : id === 'audio' ? App.A && App.A.name : App.I && App.I.doc && App.I.doc.name;
 const winTitle = id => { const m = MODES.find(x => x[0] === id); const n = docName(id); return (n ? n + ' - ' : '') + m[1]; };
-const PANEL_TITLES = {
-  'v-top': [() => winTitle('video'), 'video'], 'v-left': ['Media Library', 'videos'], 'v-viewer': ['Program Monitor', 'display'], 'v-insp': ['Properties', 'control'], 'v-tl': ['Timeline', 'video'],
-  'a-top': [() => winTitle('audio'), 'audio'], 'a-main': ['Tracks', 'music'], 'a-side': ['Effects', 'control'], 'a-foot': ['Selection & Levels', 'sound'],
-  'i-top': [() => winTitle('image'), 'image'], 'i-opts': ['Tool Options', 'control'], 'i-tools': ['', 'image'], 'i-stagewrap': [() => (App.I && App.I.doc && App.I.doc.name || 'untitled') + ' (canvas)', 'pictures'], 'i-side': ['Layers', 'docs'], 'i-bottom': ['Colors', 'display'],
+// kind: main (the editor's own window), side (can be hidden), core (always there), tool (narrow, close button only)
+const PANELS = {
+  'v-top': [() => winTitle('video'), 'video', 'main'], 'v-left': ['Media Library', 'videos', 'side', 'Media panel'], 'v-viewer': ['Program Monitor', 'display', 'core'],
+  'v-insp': ['Properties', 'control', 'side', 'Inspector'], 'v-tl': ['Timeline', 'video', 'core'],
+  'a-top': [() => winTitle('audio'), 'audio', 'main'], 'a-main': ['Tracks', 'music', 'core'], 'a-side': ['Effects', 'control', 'side', 'Effects panel'], 'a-foot': ['Selection & Levels', 'sound', 'core'],
+  'i-top': [() => winTitle('image'), 'image', 'main'], 'i-opts': ['Tool Options', 'control', 'core'], 'i-tools': ['', 'image', 'tool'],
+  'i-stagewrap': [() => (App.I && App.I.doc && App.I.doc.name || 'untitled') + ' (canvas)', 'pictures', 'core'], 'i-side': ['Layers', 'docs', 'side', 'Side panel'], 'i-bottom': ['Colors', 'display', 'core'],
 };
+const panelInfo = p => { for (const c of p.classList) if (PANELS[c]) return [c, ...PANELS[c]]; return null; };
+/** which part of a window's title bar the pointer is on: 'min' | 'max' | 'close' | 'cap' | null */
+function capHit(p, e) {
+  // the title bar's size and button position come from css/xp.css (they shrink on small screens)
+  const cs = getComputedStyle(root), CAP = parseFloat(cs.getPropertyValue('--xp-cap-h')) || 32;
+  const BTN_TOP = parseFloat(cs.getPropertyValue('--xp-btn-top')) || 5, BTN_RIGHT = parseFloat(cs.getPropertyValue('--xp-btn-right')) || 7;
+  const r = p.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  if (y < 0 || y >= CAP || x < 0 || x > r.width) return null;
+  const info = panelInfo(p), right = r.width - BTN_RIGHT - x;
+  if (y >= BTN_TOP && y < BTN_TOP + 21 && right >= 0) {
+    if (right < 21) return 'close';
+    if (info && info[3] !== 'tool') { if (right >= 22 && right < 43) return 'max'; if (right >= 44 && right < 65) return 'min'; }
+  }
+  return 'cap';
+}
+const wobble = p => { p.classList.remove('xp-wobble'); void p.offsetWidth; p.classList.add('xp-wobble'); App.sound && App.sound('error'); };
+/** a maximized window covers its editor, below the editor's main window (menus and toolbar stay reachable) */
+const placeMaxed = mod => {
+  const head = mod.querySelector(':scope > .mhead'), cs = getComputedStyle(mod);
+  if (head) mod.style.setProperty('--xp-maxtop', (head.offsetTop + head.offsetHeight + (parseFloat(cs.rowGap) || 0)) + 'px');
+};
+function setMaxed(p, on) {
+  const mod = p.closest('.module');
+  mod.querySelectorAll(':scope > .panel.xp-maxed').forEach(x => x !== p && x.classList.remove('xp-maxed'));
+  placeMaxed(mod);
+  p.classList.toggle('xp-maxed', on);
+  dispatchEvent(new Event('resize'));
+}
+function capAction(p, part) {
+  const info = panelInfo(p); if (!info) return;
+  const [, title, , kind, toggle] = info, name = typeof title === 'function' ? title() : title;
+  if (kind === 'main') {
+    if (part === 'min') setMin(true);
+    else if (part === 'max') setTight(!root.classList.contains('xp-tight'));
+    else if (part === 'close') turnOff();
+    return;
+  }
+  if (part === 'max') return setMaxed(p, !p.classList.contains('xp-maxed'));
+  if (part === 'min' || part === 'close') {
+    if (p.classList.contains('xp-maxed')) return setMaxed(p, false);
+    if (kind === 'side') {
+      const b = p.closest('.module').querySelector(`button[aria-label="${toggle}"]`);
+      if (b) { b.click(); App.toast(`${name} hidden — bring it back with the ${toggle} button or the View menu`, '', 3800); }
+      return;
+    }
+    wobble(p);
+    App.toast(`${name || 'The Tools window'} stays open — Strata needs it. Use its square button to make it bigger instead.`, 'warn', 3800);
+  }
+}
 
+/* ---------- Start menu, Turn Off, desktop ---------- */
+let on = false, el = {}, tick = 0, startOpen = false;
 function startMenu() {
   const item = (icon, label, sub, action, cls = '') => {
     const b = h('button', { class: 'xp-sm-item ' + cls, type: 'button' }, img(ICONS[icon], cls.includes('big') ? 32 : 24), h('span', null, h('b', null, label), sub ? h('small', null, sub) : null));
@@ -196,7 +238,7 @@ function startMenu() {
   };
   const sep = () => h('div', { class: 'xp-sm-sep' });
   const left = h('div', { class: 'xp-sm-left' },
-    ...MODES.map(([id, name, sub]) => item(id, name, sub, () => App.setMode(id), 'big')),
+    ...MODES.map(([id, name, sub]) => item(id, name, sub, () => { setMin(false); App.setMode(id); }, 'big')),
     sep(),
     item('run', 'Command palette', null, () => App.openPalette()),
     item('keyboard', 'Keyboard shortcuts', null, () => App.showShortcuts()),
@@ -205,9 +247,9 @@ function startMenu() {
     h('button', { class: 'xp-sm-all', type: 'button', onclick: () => { closeStart(); App.openPalette(); } }, h('b', null, 'All Programs'), img(ICONS.arrow, 18)));
   const right = h('div', { class: 'xp-sm-right' },
     item('docs', 'My Projects', null, () => App.openProjectFile(), 'strong'),
-    item('pictures', 'My Pictures', null, () => App.setMode('image'), 'strong'),
-    item('music', 'My Music', null, () => App.setMode('audio'), 'strong'),
-    item('videos', 'My Videos', null, () => App.setMode('video'), 'strong'),
+    item('pictures', 'My Pictures', null, () => { setMin(false); App.setMode('image'); }, 'strong'),
+    item('music', 'My Music', null, () => { setMin(false); App.setMode('audio'); }, 'strong'),
+    item('videos', 'My Videos', null, () => { setMin(false); App.setMode('video'); }, 'strong'),
     sep(),
     item('control', 'Control Panel', null, () => App.showSettings()),
     item('display', 'Display Properties', null, () => App.showSettings('appearance')),
@@ -219,9 +261,8 @@ function startMenu() {
   const foot = h('div', { class: 'xp-sm-foot' },
     h('button', { type: 'button', onclick: () => { closeStart(); App.showWelcome(); } }, img(ICONS.logoff, 24), 'Log Off'),
     h('button', { type: 'button', onclick: () => { closeStart(); turnOff(); } }, img(ICONS.power, 24), 'Turn Off Computer'));
-  return h('div', { class: 'xp-start' }, h('div', { class: 'xp-sm-head' }, img(ICONS.user, 48, 'xp-sm-pic'), h('span', null, 'Strata')), h('div', { class: 'xp-sm-body' }, left, right), foot);
+  return h('div', { class: 'xp-start', role: 'menu' }, h('div', { class: 'xp-sm-head' }, img(ICONS.user, 48, 'xp-sm-pic'), h('span', null, 'Strata')), h('div', { class: 'xp-sm-body' }, left, right), foot);
 }
-function toggleStart() { startOpen ? closeStart() : openStart(); }
 function openStart() {
   if (!el.start) { el.start = startMenu(); document.body.append(el.start); }
   el.start.classList.add('open'); startOpen = true; root.classList.add('xp-start-open');
@@ -231,90 +272,99 @@ function closeStart() { if (el.start) el.start.classList.remove('open'); startOp
 
 function turnOff() {
   const close = () => { back.remove(); root.classList.remove('xp-gray'); };
-  const big = (icon, cls, label, fn) => { const b = h('button', { class: 'xp-off-btn ' + cls, type: 'button' }, h('i', null, icon), h('span', null, label)); b.addEventListener('click', () => { close(); fn(); }); return b; };
-  const back = h('div', { class: 'xp-off-back' }, h('div', { class: 'xp-off' },
+  const big = (cls, label, tip, fn) => { const b = h('button', { class: 'xp-off-btn ' + cls, type: 'button', title: label, tip }, h('i'), h('span', null, label)); b.addEventListener('click', () => { close(); fn(); }); return b; };
+  const back = h('div', { class: 'xp-off-back' }, h('div', { class: 'xp-off', role: 'dialog', 'aria-label': 'Turn off computer' },
     h('div', { class: 'xp-off-head' }, h('span', null, 'Turn off computer'), img(FLAG, 28)),
     h('div', { class: 'xp-off-body' },
-      big('☾', 'stand', 'Stand By', () => setMin(true)),
-      big('⏻', 'off', 'Turn Off', async () => { try { await App.flushAll(); } catch {} App.showWelcome(); }),
-      big('↻', 'restart', 'Restart', async () => { try { await App.flushAll(); } catch {} location.reload(); })),
+      big('stand', 'Stand By', 'Puts Strata to sleep on the desktop — click a taskbar button to wake it.', () => setMin(true)),
+      big('off', 'Turn Off', 'Saves everything and goes back to the welcome screen.', async () => { try { await App.flushAll(); } catch {} App.showWelcome(); }),
+      big('restart', 'Restart', 'Saves everything and reloads Strata.', async () => { try { await App.flushAll(); } catch {} location.reload(); })),
     h('div', { class: 'xp-off-foot' }, h('button', { class: 'btn solid', type: 'button', onclick: close }, 'Cancel'))));
   back.addEventListener('pointerdown', e => { if (e.target === back) close(); });
+  el.offKey = e => { if (e.key === 'Escape' && back.isConnected) { e.stopPropagation(); close(); } };
+  document.addEventListener('keydown', el.offKey, { capture: true, once: true });
   root.classList.add('xp-gray');
   document.body.append(back);
+  App.sound && App.sound('open');
 }
-
-const setMin = v => { root.classList.toggle('xp-min', v); };
-const setMax = v => { root.classList.toggle('xp-max', v); try { localStorage.setItem('strata.xp.max', v ? '1' : '0'); } catch {} };
+const setMin = v => { root.classList.toggle('xp-min', v); if (v) App.closeMenus && App.closeMenus(); };
+const setTight = v => { root.classList.toggle('xp-tight', v); try { localStorage.setItem('strata.xp.tight', v ? '1' : '0'); } catch {} dispatchEvent(new Event('resize')); };
 
 function build() {
   const top = document.getElementById('topbar'), main = document.getElementById('main');
-  root.dataset.xp = style();
-  root.style.setProperty('--xp-wall', `url(${wall(style() === 'dream' ? 'dream' : 'bliss')})`);
+  const w = paintWalls();
+  // the desktop behind everything
+  el.wall = h('div', { class: 'xp-wall', 'aria-hidden': 'true' }, h('i', { class: 'xp-sky' }),
+    h('i', { class: 'xp-clouds' }, h('i', { class: 'xp-cloud-track', style: { backgroundImage: `url(${w.clouds})` } })),
+    h('i', { class: 'xp-hill', style: { backgroundImage: `url(${w.hill})` } }), h('i', { class: 'xp-haze' }));
+  el.icons = h('div', { class: 'xp-icons' },
+    ...[['computer', 'Strata Studio', () => setMin(false)], ...MODES.map(([id, name]) => [id, name, () => { setMin(false); App.setMode(id); }]), ['docs', 'My Projects', () => App.openProjectFile()], ['recycle', 'Recycle Bin', () => App.showSettings('storage')]]
+      .map(([ic, label, fn]) => { const b = h('button', { class: 'xp-icon', type: 'button', title: label, tip: 'Double-click to open.' }, img(ICONS[ic], 32), h('span', null, label)); b.addEventListener('dblclick', fn); b.addEventListener('click', () => { el.icons.querySelectorAll('.sel').forEach(x => x.classList.remove('sel')); b.classList.add('sel'); }); return b; }));
+  document.body.prepend(el.wall, el.icons);
   // taskbar: Start button, a clock in the notification area
   const brand = top.querySelector('.brand');
   el.flag = img(FLAG, 22, 'xp-flag'); brand.prepend(el.flag);
-  el.onBrand = e => { e.stopImmediatePropagation(); toggleStart(); };
+  el.onBrand = e => { e.stopImmediatePropagation(); startOpen ? closeStart() : openStart(); };
   brand.addEventListener('click', el.onBrand, true);
   el.clock = h('span', { class: 'xp-clock', title: 'Clock', tip: 'The time on this computer.' });
   top.querySelector('.tb-right').append(el.clock);
-  // the program window (luna): title bar, status bar
-  el.title = h('div', { class: 'xp-titlebar' }, el.titleIco = img(ICONS.video, 16), el.titleText = h('span', { class: 'xp-title' }),
-    h('div', { class: 'xp-wbtns' },
-      h('button', { class: 'xp-wb min', type: 'button', title: 'Minimize', tip: 'Hides the window to show the desktop — click its taskbar button to bring it back.', onclick: () => setMin(true) }),
-      h('button', { class: 'xp-wb max', type: 'button', title: 'Maximize', tip: 'Fills the screen, or puts the window back.', onclick: () => setMax(!root.classList.contains('xp-max')) }),
-      h('button', { class: 'xp-wb close', type: 'button', title: 'Close', tip: 'Turn off computer…', onclick: () => turnOff() })));
-  el.title.addEventListener('dblclick', e => { if (!e.target.closest('.xp-wb')) setMax(!root.classList.contains('xp-max')); });
-  el.statusText = h('span', { class: 'xp-st-text' }, 'For Help, press ?');
-  el.statusInfo = h('span', { class: 'xp-st-panel' });
-  el.status = h('div', { class: 'xp-statusbar' }, el.statusText, el.statusInfo, h('span', { class: 'xp-st-panel xp-st-zoom' }), h('i', { class: 'xp-grip' }));
-  main.before(el.title); main.after(el.status);
-  el.onOver = e => { const t = e.target.closest && e.target.closest('[data-tip]'); el.statusText.textContent = t ? (t.dataset.tipTitle ? t.dataset.tipTitle + ': ' : '') + t.dataset.tip : 'For Help, press ?'; };
-  document.addEventListener('pointerover', el.onOver);
-  // desktop icons (seen when the window is minimized)
-  el.icons = h('div', { class: 'xp-icons' },
-    ...[['computer', 'Strata Studio', () => setMin(false)], ...MODES.map(([id, name]) => [id, name, () => { App.setMode(id); setMin(false); }]), ['docs', 'My Projects', () => App.openProjectFile()], ['recycle', 'Recycle Bin', () => App.showSettings('storage')]]
-      .map(([ic, label, fn]) => { const b = h('button', { class: 'xp-icon', type: 'button', title: label, tip: 'Double-click to open.' }, img(ICONS[ic], 32), h('span', null, label)); b.addEventListener('dblclick', fn); b.addEventListener('click', () => { el.icons.querySelectorAll('.sel').forEach(x => x.classList.remove('sel')); b.classList.add('sel'); }); return b; }));
-  document.body.prepend(el.icons);
-  // taskbar buttons: the active program's button minimizes it, a minimized one comes back
+  // taskbar buttons: a minimized Strata comes back; the active editor's button minimizes it, like XP
   el.onTab = e => {
     const t = e.target.closest('.tab'); if (!t) return;
     if (root.classList.contains('xp-min')) { setMin(false); return; }
-    if (t.dataset.mode === App.active && style() === 'luna') { e.stopImmediatePropagation(); setMin(true); }
+    if (t.dataset.mode === App.active) { e.stopImmediatePropagation(); setMin(true); }
   };
   top.querySelector('.tabs').addEventListener('click', el.onTab, true);
+  // title bars: hover highlights a button, click uses it, double-click maximizes
+  el.onMove = e => {
+    const p = e.target.closest && e.target.closest('.module > .panel');
+    if (el.hot && el.hot !== p) { delete el.hot.dataset.cap; el.hot = null; }
+    if (!p || e.target !== p) { if (p && p.dataset.cap) delete p.dataset.cap; return; }
+    const part = capHit(p, e);
+    if (part && part !== 'cap') { p.dataset.cap = part; el.hot = p; } else delete p.dataset.cap;
+  };
+  el.onClick = e => {
+    const p = e.target.closest && e.target.closest('.module > .panel'); if (!p || e.target !== p) return;
+    const part = capHit(p, e); if (part && part !== 'cap') capAction(p, part);
+  };
+  el.onDbl = e => {
+    const p = e.target.closest && e.target.closest('.module > .panel'); if (!p || e.target !== p || capHit(p, e) !== 'cap') return;
+    const info = panelInfo(p); if (!info || info[3] === 'tool') return;
+    if (info[3] === 'main') setTight(!root.classList.contains('xp-tight')); else setMaxed(p, !p.classList.contains('xp-maxed'));
+  };
+  main.addEventListener('pointermove', el.onMove);
+  main.addEventListener('click', el.onClick);
+  main.addEventListener('dblclick', el.onDbl);
+  el.onResize = () => document.querySelectorAll('.module:has(> .panel.xp-maxed)').forEach(placeMaxed);
+  addEventListener('resize', el.onResize);
   el.onDown = e => { if (startOpen && !e.target.closest('.xp-start, .brand')) closeStart(); };
   document.addEventListener('pointerdown', el.onDown, true);
-  el.onKey = e => { if (startOpen && e.key === 'Escape') { closeStart(); e.stopPropagation(); } };
+  el.onKey = e => {
+    if (startOpen && e.key === 'Escape') { closeStart(); e.stopPropagation(); return; }
+    // Ctrl+Esc opens the Start menu, as on XP
+    if (e.key === 'Escape' && e.ctrlKey && !App.isTyping(e.target)) { e.preventDefault(); openStart(); }
+  };
   document.addEventListener('keydown', el.onKey, true);
-  try { if (localStorage.getItem('strata.xp.max') === '1') root.classList.add('xp-max'); } catch {}
-  // icons for the taskbar buttons and tray, as CSS variables
+  try { if (localStorage.getItem('strata.xp.tight') === '1') root.classList.add('xp-tight'); } catch {}
+  // icons for the taskbar buttons, tray and balloons; window caption buttons in every state
   for (const k of ['video', 'audio', 'image', 'tips', 'run', 'keyboard', 'display', 'control', 'floppy', 'sound', 'info', 'warn', 'error', 'ok']) root.style.setProperty('--xpi-' + k, cssUrl(ICONS[k]));
   root.style.setProperty('--xp-capbtns', cssUrl(CAP_BTNS(true)));
   root.style.setProperty('--xp-capbtns-off', cssUrl(CAP_BTNS(false)));
-  root.style.setProperty('--xp-capclose', cssUrl(CAP_BTNS(true).replace('viewBox="0 0 65 21" width="65"', 'viewBox="44 0 21 21" width="21"')));
-  root.style.setProperty('--xp-capclose-off', cssUrl(CAP_BTNS(false).replace('viewBox="0 0 65 21" width="65"', 'viewBox="44 0 21 21" width="21"')));
+  for (const k of ['min', 'max', 'close']) root.style.setProperty('--xp-capbtns-' + k, cssUrl(CAP_BTNS(true, k)));
+  root.style.setProperty('--xp-capclose', cssUrl(CAP_BTNS(true, '', 'close')));
+  root.style.setProperty('--xp-capclose-off', cssUrl(CAP_BTNS(false, '', 'close')));
+  root.style.setProperty('--xp-capclose-hot', cssUrl(CAP_BTNS(true, 'close', 'close')));
   update();
   tick = setInterval(update, 1000);
-  // switching editors updates the title bar, taskbar and status bar at once
+  // switching editors updates titles at once
   el.modeObs = new MutationObserver(() => update());
   el.modeObs.observe(document.body, { attributes: true, attributeFilter: ['data-mode'] });
 }
 function update() {
   if (!on) return;
-  const d = new Date();
-  el.clock.textContent = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  const id = App.active || 'video';
-  el.titleText.textContent = winTitle(id);
-  if (el.titleIco.dataset.m !== id) { el.titleIco.src = svgUri(ICONS[id]); el.titleIco.dataset.m = id; }
-  document.querySelectorAll('#topbar .tab').forEach(t => { const lbl = t.querySelector('.lbl'); if (lbl) lbl.dataset.xp = winTitle(t.dataset.mode); });
-  const info = id === 'video' && App.V && App.V.project ? `${App.V.project.width}×${App.V.project.height} · ${App.V.project.fps} fps`
-    : id === 'audio' && App.A ? `${(App.A.sr / 1000).toFixed(1)} kHz · ${App.A.tracks.length} track${App.A.tracks.length === 1 ? '' : 's'}`
-    : id === 'image' && App.I && App.I.doc ? `${App.I.doc.w} × ${App.I.doc.h} px` : '';
-  el.statusInfo.textContent = info;
-  el.status.querySelector('.xp-st-zoom').textContent = Math.round((App.uiScale ? App.uiScale() : 1) * 100) + '%';
-  // panel captions for the "desk" and "dream" looks
-  if (style() !== 'luna') for (const [cls, [t, ic]] of Object.entries(PANEL_TITLES)) {
+  el.clock.textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  document.querySelectorAll('#topbar .tab').forEach(t => { const lbl = t.querySelector('.lbl'); if (lbl) { const v = winTitle(t.dataset.mode); if (lbl.dataset.xp !== v) lbl.dataset.xp = v; } });
+  for (const [cls, [t, ic]] of Object.entries(PANELS)) {
     const p = document.querySelector('.module > .' + cls); if (!p) continue;
     const text = typeof t === 'function' ? t() : t;
     if (p.dataset.xpTitle !== text) { p.dataset.xpTitle = text; p.style.setProperty('--xp-cap', cssUrl(capTitle(text, ICONS[ic]))); }
@@ -324,28 +374,28 @@ function teardown() {
   clearInterval(tick);
   if (el.modeObs) el.modeObs.disconnect();
   closeStart();
-  const top = document.getElementById('topbar');
+  const top = document.getElementById('topbar'), main = document.getElementById('main');
   const brand = top && top.querySelector('.brand');
   if (brand && el.onBrand) brand.removeEventListener('click', el.onBrand, true);
   if (top && el.onTab) top.querySelector('.tabs').removeEventListener('click', el.onTab, true);
-  if (el.onOver) document.removeEventListener('pointerover', el.onOver);
+  if (main && el.onMove) { main.removeEventListener('pointermove', el.onMove); main.removeEventListener('click', el.onClick); main.removeEventListener('dblclick', el.onDbl); }
   if (el.onDown) document.removeEventListener('pointerdown', el.onDown, true);
+  if (el.onResize) removeEventListener('resize', el.onResize);
+  document.querySelectorAll('.module').forEach(m => m.style.removeProperty('--xp-maxtop'));
   if (el.onKey) document.removeEventListener('keydown', el.onKey, true);
-  for (const k of ['flag', 'clock', 'title', 'status', 'icons', 'start']) if (el[k]) el[k].remove();
-  document.querySelectorAll('[data-xp-title]').forEach(p => { delete p.dataset.xpTitle; p.style.removeProperty('--xp-cap'); });
-  root.classList.remove('xp-min', 'xp-max', 'xp-gray', 'xp-start-open');
-  delete root.dataset.xp;
+  for (const k of ['flag', 'clock', 'wall', 'icons', 'start']) if (el[k]) el[k].remove();
+  document.querySelectorAll('.module > .panel').forEach(p => { delete p.dataset.xpTitle; delete p.dataset.cap; p.style.removeProperty('--xp-cap'); p.classList.remove('xp-maxed', 'xp-wobble'); });
+  root.classList.remove('xp-min', 'xp-gray', 'xp-start-open', 'xp-tight');
   el = {};
+  dispatchEvent(new Event('resize'));
 }
 function sync() {
   const want = App.settings.theme === 'xp';
   if (want && !on) { on = true; build(); }
   else if (!want && on) { on = false; teardown(); }
-  else if (want && on && root.dataset.xp !== style()) { teardown(); build(); }
 }
 App.on('theme', () => setTimeout(sync, 0));
-App.on('setting', k => { if (k === 'xpStyle') sync(); });
-App.xp = { icons: ICONS, flag: FLAG, wall, sync, styles: STYLES, turnOff, openStart, closeStart };
+App.xp = { icons: ICONS, flag: FLAG, walls: paintWalls, sync, turnOff, openStart, closeStart, setMin, setTight };
 // boot once the top bar exists (main.js builds it right after this file loads)
 if (document.readyState === 'loading') addEventListener('DOMContentLoaded', () => setTimeout(sync, 0)); else setTimeout(sync, 0);
 })();

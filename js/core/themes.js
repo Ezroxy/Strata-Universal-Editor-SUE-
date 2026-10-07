@@ -10,7 +10,7 @@ App.THEMES = [
   { id: 'dark', name: 'Strata Dark', desc: 'The original: deep charcoal with a warm glow behind each editor.', pack: 'soft', dark: true, alpha: 1 },
   { id: 'light', name: 'Strata Light', desc: 'Clean and bright for daylight work. Same layout, light paper tones.', pack: 'soft', dark: false, alpha: 1 },
   { id: 'aero', name: 'Frutiger Aero', desc: 'Liquid glass, sky-blue gradients, glossy jelly buttons and bubbles. Very 2007.', pack: 'glass', dark: false, alpha: 0.6 },
-  { id: 'xp', name: 'Windows XP Luna', desc: 'Blue title bars, beige windows, a green Start-style button and yellow balloon tips.', pack: 'xp', dark: false, alpha: 1 },
+  { id: 'xp', name: 'Windows XP Dreamcore', desc: 'XP as you remember it from a dream: chunky 3D windows on an endless green hill, a Start menu, a taskbar and balloon tips.', pack: 'dream', dark: false, alpha: 1 },
   { id: 'skeuo', name: 'Skeuomorphic Studio', desc: 'Leather, brushed-metal faceplates with screws, fader caps, LCD readouts and LED keys.', pack: 'mech', dark: true, alpha: 1 },
   { id: 'oled', name: 'Midnight OLED', desc: 'True black everywhere: easy on the eyes at night and on OLED screens.', pack: 'minimal', dark: true, alpha: 1 },
   { id: 'synthwave', name: 'Synthwave', desc: 'Neon pink and cyan over a retro sunset grid.', pack: 'synth', dark: true, alpha: 0.84 },

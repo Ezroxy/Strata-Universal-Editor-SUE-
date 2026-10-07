@@ -1,24 +1,65 @@
 /* ==========================================================================
-   Strata Studio — Windows XP (Luna) shell and controls.
-   Loaded after themes.css; js/core/xpshell.js adds the desktop pieces and sets html[data-xp]:
-     luna  — one program window, panes in the style of XP's own programs
-     desk  — every panel is its own window on the desktop
-     dream — chunky 3D windows on an endless hill
+   Strata Studio — Windows XP Dreamcore: the XP you remember from a dream.
+   Chunky striped 3D windows on an endless green hill, grainy beige faces, a hazy sky with drifting clouds,
+   and the real XP furniture: taskbar, Start menu, Luna controls, balloon tips.
+   js/core/xpshell.js builds the desktop pieces; panels become windows through their border:
+   the 32px top border is the title bar (gradient, title and buttons are background layers).
    ========================================================================== */
 
-/* ---------- desktop & type ---------- */
+/* ---------- tokens ---------- */
 html[data-theme="xp"] {
-  --xp-face: #ece9d8; --xp-frame: #0058ee; --xp-frame-dark: #001ea0;
-  --xp-cap-on: linear-gradient(180deg, #0997ff 0%, #0053ee 8%, #0050ee 40%, #0066ff 88%, #0066ff 93%, #005bff 95%, #003dd7 96%, #003dd7 100%);
-  --xp-cap-off: linear-gradient(180deg, #7697e7 0%, #7e9ee3 3%, #94afe8 6%, #97b4e9 8%, #82a5e4 14%, #7c9fe2 17%, #7996de 25%, #7b99e1 56%, #82a9e9 81%, #80a5e7 89%, #7b96e1 94%, #7a93df 97%, #abbae3 100%);
+  --xp-face: #efe9d4; --xp-frame: #1747e6; --xp-frame-off: #6a92ea; --xp-frame-dark: #0a2a9e;
+  --xp-cap-on: linear-gradient(180deg, #8fc0ff 0%, #3d86ff 10%, #1a5cf0 45%, #1150e8 70%, #2f74ff 92%, #0b3bc4 100%);
+  --xp-cap-off: linear-gradient(180deg, #c3d9ff 0%, #93b6f8 12%, #7aa0ee 50%, #779dec 75%, #8db0f3 92%, #6687db 100%);
   --xp-task: linear-gradient(180deg, #1f2f86 0%, #3165c4 3%, #3682e5 6%, #4490e6 10%, #3883e5 12%, #2b71e0 15%, #2663da 18%, #235bd6 20%, #2258d5 23%, #2157d6 38%, #245ddb 54%, #2562df 86%, #245fdc 89%, #2158d4 92%, #1d4ec0 95%, #1941a5 98%);
   --xp-pane: linear-gradient(180deg, #7ba2e7 0%, #6375d6 100%);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .37 0 0 0 0 .26 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  --xp-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='38' viewBox='0 0 17 25'%3E%3Cpath d='M1 1v19l4.6-4.4 3.3 7.6 3.2-1.4-3.3-7.4H15z' fill='%23fff' stroke='%23000' stroke-width='1.1' stroke-linejoin='round'/%3E%3C/svg%3E") 2 2; --xp-hand: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='36' viewBox='0 0 20 24'%3E%3Cpath d='M6.5 1.2c.9 0 1.6.7 1.6 1.6v6.1c.3-.4.8-.6 1.3-.6.8 0 1.5.6 1.6 1.3.3-.3.8-.5 1.3-.5.9 0 1.6.7 1.6 1.6.3-.2.6-.3 1-.3.9 0 1.6.7 1.6 1.6v4.6c0 2.8-2.2 5-5 5H9.4c-1.5 0-2.9-.7-3.8-1.9L1.6 14.6c-.5-.7-.4-1.7.3-2.2.6-.5 1.5-.4 2.1.2l.9 1V2.8c0-.9.7-1.6 1.6-1.6z' fill='%23fff' stroke='%23000' stroke-width='1' stroke-linejoin='round'/%3E%3Cpath d='M8.1 9v4.2M10.9 9.6v3.6M13.8 10.6v2.8' stroke='%23000' stroke-width='.8' fill='none'/%3E%3C/svg%3E") 9 2;
   --font: Tahoma, 'Segoe UI', Verdana, sans-serif; --heading-font: Tahoma, 'Segoe UI', sans-serif;
-  --gap: 4px; --r: 0px; --scrim: transparent;
+  --r: 0px; --scrim: transparent;
+  /* how far apart the windows float, and how deep they are (smaller screens and "tight" get less) */
+  --xp-pt: 16px; --xp-pr: 44px; --xp-pb: 46px; --xp-pl: 16px; --xp-rg: 40px; --xp-cg: 46px;
+  /* window title bars (js/core/xpshell.js reads these to know where the buttons are) */
+  --xp-cap-h: 32px; --xp-btn-top: 5px; --xp-btn-right: 7px; --xp-side: 6px; --xp-title-y: 4px;
+  --xp-ext: 1px 1px 0 #1546e0, 2px 2px 0 #1546e0, 3px 3px 0 #b4cbff, 4px 4px 0 #b4cbff, 5px 5px 0 #1546e0, 6px 6px 0 #1546e0, 7px 7px 0 #b4cbff, 8px 8px 0 #b4cbff, 9px 9px 0 #1546e0, 10px 10px 0 #1546e0, 11px 11px 0 #b4cbff, 12px 12px 0 #b4cbff, 13px 13px 0 #1546e0, 14px 14px 0 #1546e0, 15px 15px 0 #b4cbff, 16px 16px 0 #b4cbff, 17px 17px 0 #1546e0, 18px 18px 0 #1546e0, 19px 19px 0 #b4cbff, 20px 20px 0 #b4cbff, 21px 21px 0 #1546e0, 22px 22px 0 #1546e0, 23px 23px 0 #b4cbff, 24px 24px 0 #b4cbff, 25px 25px 0 #1546e0, 26px 26px 0 #1546e0, 27px 27px 0 #0a2a9e, 34px 40px 26px rgba(0,30,90,.32);
+  --xp-ext-sm: 1px 1px 0 #1546e0, 2px 2px 0 #1546e0, 3px 3px 0 #b4cbff, 4px 4px 0 #b4cbff, 5px 5px 0 #1546e0, 6px 6px 0 #1546e0, 7px 7px 0 #b4cbff, 8px 8px 0 #b4cbff, 9px 9px 0 #1546e0, 10px 10px 0 #1546e0, 11px 11px 0 #0a2a9e, 16px 20px 14px rgba(0,30,90,.28);
+  cursor: var(--xp-arrow), default;
 }
-html[data-theme="xp"] body { background: var(--xp-wall, #3a6ea5) center / cover no-repeat, #3a6ea5; font-size: 12px; -webkit-font-smoothing: auto; letter-spacing: 0; }
+@media (max-width: 1500px), (max-height: 1040px) {
+  html[data-theme="xp"] { --xp-pt: 12px; --xp-pr: 28px; --xp-pb: 30px; --xp-pl: 12px; --xp-rg: 22px; --xp-cg: 30px; --xp-ext: 1px 1px 0 #1546e0, 2px 2px 0 #1546e0, 3px 3px 0 #b4cbff, 4px 4px 0 #b4cbff, 5px 5px 0 #1546e0, 6px 6px 0 #1546e0, 7px 7px 0 #b4cbff, 8px 8px 0 #b4cbff, 9px 9px 0 #1546e0, 10px 10px 0 #1546e0, 11px 11px 0 #b4cbff, 12px 12px 0 #b4cbff, 13px 13px 0 #1546e0, 14px 14px 0 #1546e0, 15px 15px 0 #b4cbff, 16px 16px 0 #b4cbff, 17px 17px 0 #0a2a9e, 24px 30px 16px rgba(0,30,90,.32); }
+}
+@media (max-width: 1300px), (max-height: 860px) {
+  html[data-theme="xp"] { --xp-pt: 8px; --xp-pr: 20px; --xp-pb: 22px; --xp-pl: 8px; --xp-rg: 16px; --xp-cg: 22px; --xp-ext: 1px 1px 0 #1546e0, 2px 2px 0 #1546e0, 3px 3px 0 #b4cbff, 4px 4px 0 #b4cbff, 5px 5px 0 #1546e0, 6px 6px 0 #1546e0, 7px 7px 0 #b4cbff, 8px 8px 0 #b4cbff, 9px 9px 0 #1546e0, 10px 10px 0 #1546e0, 11px 11px 0 #b4cbff, 12px 12px 0 #b4cbff, 13px 13px 0 #0a2a9e, 20px 26px 12px rgba(0,30,90,.32); }
+}
+@media (max-width: 1100px), (max-height: 860px) {
+  html[data-theme="xp"] { --xp-cap-h: 26px; --xp-btn-top: 3px; --xp-btn-right: 5px; --xp-side: 4px; --xp-title-y: 1px; }
+}
+@media (max-width: 1100px), (max-height: 700px) {
+  html[data-theme="xp"] { --xp-pt: 6px; --xp-pr: 14px; --xp-pb: 16px; --xp-pl: 6px; --xp-rg: 10px; --xp-cg: 14px; --xp-ext: 1px 1px 0 #1546e0, 2px 2px 0 #1546e0, 3px 3px 0 #b4cbff, 4px 4px 0 #b4cbff, 5px 5px 0 #1546e0, 6px 6px 0 #1546e0, 7px 7px 0 #b4cbff, 8px 8px 0 #0a2a9e, 15px 21px 7px rgba(0,30,90,.32); }
+}
+html[data-theme="xp"].xp-tight { --xp-pt: 5px; --xp-pr: 12px; --xp-pb: 14px; --xp-pl: 5px; --xp-rg: 9px; --xp-cg: 12px; --xp-ext: 1px 1px 0 #1546e0, 2px 2px 0 #1546e0, 3px 3px 0 #b4cbff, 4px 4px 0 #b4cbff, 5px 5px 0 #1546e0, 6px 6px 0 #1546e0, 7px 7px 0 #0a2a9e, 14px 20px 6px rgba(0,30,90,.32); }
+html[data-theme="xp"] body { background: #2f7cf2; font-size: 12px; -webkit-font-smoothing: auto; letter-spacing: 0; }
 html[data-theme="xp"] .modal-back { backdrop-filter: none; }
 html[data-theme="xp"] ::selection { background: #316ac5; color: #fff; }
+/* big XP cursors */
+html[data-theme="xp"] :is(button, a, select, [role="button"], .menu-item, .tab, .ptab, .doc-tab, .chip, .fx-btn, .section-head, .layer, .look, .xp-sm-item, .xp-icon, .switch, .switch input, .palette i, .swatches .sw, .hist-item, .theme-card, .pref-nav-item, .brand, .wlx [data-pick], .wlx [data-act]) { cursor: var(--xp-hand), pointer; }
+html[data-theme="xp"] :is(button, .btn):disabled { cursor: var(--xp-arrow), default; }
+
+/* ---------- the desktop: sky, drifting clouds, the hill, a dreamy haze ---------- */
+.xp-wall, .xp-icons { display: none; }
+html[data-theme="xp"] .xp-wall { display: block; position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.xp-wall > i { position: absolute; inset: 0; display: block; }
+.xp-sky { background: radial-gradient(ellipse 55% 45% at 20% 6%, rgba(255,255,255,.38), transparent 70%), radial-gradient(ellipse 40% 30% at 85% 30%, rgba(255,240,250,.18), transparent 70%), linear-gradient(180deg, #0638c9 0%, #2f7cf2 42%, #8cc4ff 70%, #e6f4ff 90%); }
+.xp-wall > .xp-clouds { bottom: 33%; overflow: hidden; }
+.xp-cloud-track { position: absolute; top: 2%; left: 0; width: 200%; height: 100%; display: block; background-repeat: repeat-x; background-size: 50% auto; animation: xpDrift 720s linear infinite; will-change: transform; }
+@keyframes xpDrift { to { transform: translateX(-50%); } }
+.xp-hill { background: center bottom / cover no-repeat; }
+.xp-haze { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E"), radial-gradient(ellipse 70% 38% at 50% 60%, rgba(255,255,236,.22), transparent 70%), radial-gradient(ellipse at center, transparent 58%, rgba(20,40,120,.28)); }
+html[data-fx="off"] .xp-cloud-track { animation: none; }
+html[data-fx="off"] .xp-haze { display: none; }
+html[data-theme="xp"] #main { z-index: 2; }
+html[data-theme="xp"].xp-min #main { visibility: hidden; }
+html[data-theme="xp"].xp-min .xp-icons { position: fixed; left: 14px; top: 14px; z-index: 3; display: grid; gap: 14px; }
 
 /* ---------- taskbar (the old top bar, moved to the bottom) ---------- */
 html[data-theme="xp"] .topbar {
@@ -115,38 +156,22 @@ html.xp-gray body > :not(.xp-off-back) { filter: grayscale(1); transition: filte
 .xp-off-body { height: 116px; display: flex; justify-content: space-around; align-items: center; padding: 0 10px;
   background: linear-gradient(180deg, #5a7edc, #6d8fe6 30%, #5a7edc); border-top: 1px solid #a8c0f5; border-bottom: 1px solid #22378c; }
 .xp-off-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; border: 0; background: none; cursor: pointer; color: #fff; font: inherit; }
-.xp-off-btn i { width: 33px; height: 33px; display: grid; place-items: center; border-radius: 5px; border: 1px solid rgba(255,255,255,.7); font: 700 19px/1 Tahoma, sans-serif; font-style: normal;
+.xp-off-btn i { width: 33px; height: 33px; display: grid; place-items: center; border-radius: 5px; border: 1px solid rgba(255,255,255,.7); font: 700 20px/1 Tahoma, sans-serif; font-style: normal; color: #fff; text-shadow: 1px 1px 1px rgba(0,0,0,.35);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 1px 1px 3px rgba(0,0,0,.4); }
 .xp-off-btn.stand i { background: linear-gradient(180deg, #ffe079, #e7a31a); }
 .xp-off-btn.off i { background: linear-gradient(180deg, #ff9a6e, #d43a14); }
 .xp-off-btn.restart i { background: linear-gradient(180deg, #8fe06a, #2c9620); }
 .xp-off-btn:hover i { filter: brightness(1.15); }
 .xp-off-foot { height: 40px; display: flex; align-items: center; justify-content: flex-end; padding: 0 12px; background: #00309c; }
+.xp-off-btn.stand i::before { content: '\263E'; }
+.xp-off-btn.off i::before { content: '\23FB'; }
+.xp-off-btn.restart i::before { content: '\21BB'; }
 
 /* ---------- desktop icons (seen when the program is minimized) ---------- */
-.xp-icons { display: none; }
-html[data-xp="luna"] .xp-icons { position: fixed; left: 10px; top: 10px; z-index: 0; display: grid; grid-auto-flow: row; gap: 14px; }
-.xp-icon { width: 76px; display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: none; cursor: default; padding: 2px; font: 11px Tahoma, sans-serif; color: #fff; text-shadow: 1px 1px 1px #000, 0 0 2px #000; }
+.xp-icon { width: 76px; display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: none; padding: 2px; font: 11px Tahoma, sans-serif; color: #fff; text-shadow: 1px 1px 1px #000, 0 0 2px #000; }
 .xp-icon span { padding: 0 2px; text-align: center; line-height: 1.25; }
 .xp-icon.sel span { background: #316ac5; text-shadow: none; outline: 1px dotted #fff; }
 .xp-icon.sel img { filter: sepia(1) hue-rotate(185deg) saturate(3) brightness(.85); }
-
-/* ---------- title bars & frames ---------- */
-.xp-titlebar, .xp-statusbar { display: none; }
-.xp-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.xp-wbtns { display: flex; gap: 2px; flex: none; }
-.xp-wb { width: 21px; height: 21px; padding: 0; border: 1px solid #fff; border-radius: 3px; cursor: pointer; position: relative;
-  background: linear-gradient(180deg, #5c9dff 0%, #2667e8 50%, #1a52d6 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 2px rgba(0,0,0,.2); }
-.xp-wb:hover { filter: brightness(1.18); }
-.xp-wb:active { filter: brightness(.85); box-shadow: inset 1px 1px 3px rgba(0,0,0,.5); }
-.xp-wb.close { background: linear-gradient(180deg, #f09c7c 0%, #e0582c 50%, #c3401a 100%); margin-left: 2px; }
-.xp-wb::before, .xp-wb::after { content: ''; position: absolute; background: #fff; }
-.xp-wb.min::before { left: 4px; bottom: 4px; width: 7px; height: 3px; }
-.xp-wb.max::before { left: 4px; top: 4px; width: 11px; height: 11px; background: none; border: 1px solid #fff; border-top-width: 3px; box-sizing: border-box; }
-html.xp-max .xp-wb.max::before { left: 6px; top: 3px; width: 8px; height: 8px; }
-html.xp-max .xp-wb.max::after { left: 3px; top: 7px; width: 8px; height: 8px; background: #1f5edf; border: 1px solid #fff; border-top-width: 2px; box-sizing: border-box; }
-.xp-wb.close::before, .xp-wb.close::after { left: 4px; top: 8.5px; width: 11px; height: 2.2px; border-radius: 1px; transform: rotate(45deg); }
-.xp-wb.close::after { transform: rotate(-45deg); }
 
 /* ---------- menus ---------- */
 html[data-theme="xp"] .menubar > button { height: 22px; padding: 0 7px; border-radius: 0; color: #000; font: 400 12px Tahoma, sans-serif; }
@@ -295,111 +320,72 @@ html[data-theme="xp"] .section-head .s-ico { color: #215dc6; }
 html[data-theme="xp"] .section-body { background: #d6dff7; border: 1px solid #fff; border-top: 0; padding: 6px 2px 8px; color: #000; }
 html[data-theme="xp"] .section-body .ctl > label { color: #000; }
 
-/* ==========================================================================
-   LUNA — one program window
-   ========================================================================== */
-html[data-xp="luna"] .xp-titlebar {
-  display: flex; align-items: center; gap: 5px; height: 30px; flex: none; margin: 12px 12px 0; padding: 0 5px 0 7px; position: relative; z-index: 2;
-  background: var(--xp-cap-on); border-radius: 8px 8px 0 0; box-shadow: 0 0 0 1px var(--xp-frame-dark); color: #fff; font: 700 13px 'Trebuchet MS', Tahoma, sans-serif; text-shadow: 1px 1px 0 #0f1089; cursor: default;
-}
-html[data-xp="luna"] #main { margin: 0 12px; border: 3px solid var(--xp-frame); border-top: 0; border-bottom: 0; background: var(--xp-face); box-shadow: -1px 0 0 var(--xp-frame-dark), 1px 0 0 var(--xp-frame-dark); z-index: 1; }
-html[data-xp="luna"] .xp-statusbar {
-  display: flex; align-items: center; gap: 0; height: 26px; flex: none; margin: 0 12px 10px; padding: 0 0 0 3px; position: relative; z-index: 1;
-  background: var(--xp-face); border: 3px solid var(--xp-frame); border-top: 0; box-shadow: 0 0 0 1px var(--xp-frame-dark), inset 0 1px 0 #fff; font: 11px Tahoma, sans-serif; color: #000;
-}
-html[data-xp="luna"] .xp-st-text { flex: 1; min-width: 0; padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-html[data-xp="luna"] .xp-st-panel { padding: 0 10px; min-width: 70px; height: 18px; line-height: 18px; box-shadow: inset 1px 0 0 #aca899, inset 2px 0 0 #fff; white-space: nowrap; }
-html[data-xp="luna"] .xp-grip { width: 14px; height: 14px; align-self: flex-end; margin: 0 1px 1px 2px;
-  background: radial-gradient(circle, #fff 0 1px, transparent 1.2px) 0 0 / 4px 4px, radial-gradient(circle, #aca899 0 1px, transparent 1.2px) 1px 1px / 4px 4px;
-  clip-path: polygon(100% 0, 100% 100%, 0 100%); }
-html[data-xp="luna"].xp-max .xp-titlebar { margin: 0; border-radius: 0; }
-html[data-xp="luna"].xp-max #main { margin: 0; }
-html[data-xp="luna"].xp-max .xp-statusbar { margin: 0; }
-html[data-xp="luna"].xp-min .xp-titlebar, html[data-xp="luna"].xp-min #main, html[data-xp="luna"].xp-min .xp-statusbar { visibility: hidden; }
-html[data-xp="luna"].xp-min .xp-icons { z-index: 3; }
-html[data-xp="luna"].xp-min .tab.on { background: linear-gradient(180deg, #4e98f6 0%, #3c87f2 10%, #3a83f0 55%, #2f74e8 100%); box-shadow: inset 1px 1px 0 rgba(255,255,255,.4); }
-/* inside the window: XP program furniture */
-html[data-xp="luna"] .module { padding: 0 4px 4px; gap: 4px; }
-html[data-xp="luna"] .module > .panel { border: 0; border-radius: 0; box-shadow: none; background: var(--xp-face); }
-html[data-xp="luna"] .module > .panel.mhead { margin: 0 -4px; padding: 2px 6px; min-height: 0; gap: 2px; box-shadow: inset 0 -1px 0 #aca899, 0 1px 0 #fff; }
-html[data-xp="luna"] .mhead .menubar { margin-right: 4px; }
-html[data-xp="luna"] .mhead .sep, html[data-xp="luna"] .tl-toolbar .sep { width: 2px; height: 22px; background: none; box-shadow: inset 1px 0 #aca899, inset -1px 0 #fff; margin: 0 3px; }
-html[data-xp="luna"] .panel-head { height: 28px; padding: 0 6px; background: var(--xp-face); border-bottom: 1px solid #aca899; box-shadow: 0 1px 0 #fff; color: #000; border-radius: 0; }
-html[data-xp="luna"] .panel-title { color: #000; font: 700 12px Tahoma, sans-serif; text-transform: none; letter-spacing: 0; text-shadow: none; }
-html[data-xp="luna"] .panel-title::before { display: none; }
-html[data-xp="luna"] .panel-head .btn, html[data-xp="luna"] .panel-head .seg button { color: #000; }
-/* task panes: Explorer's blue side bar */
-html[data-xp="luna"] .module > .v-insp, html[data-xp="luna"] .module > .a-side, html[data-xp="luna"] .module > .i-side { background: var(--xp-pane); box-shadow: inset 1px 1px 0 #aca899; }
-html[data-xp="luna"] .v-insp > .panel-head, html[data-xp="luna"] .a-side > .panel-head { background: transparent; border: 0; box-shadow: none; height: 30px; }
-html[data-xp="luna"] .v-insp .panel-title, html[data-xp="luna"] .a-side .panel-title { color: #fff; font: 700 13px 'Trebuchet MS', Tahoma, sans-serif; text-shadow: 1px 1px 0 #10308a; }
-/* sunken work areas */
-html[data-xp="luna"] .viewer-stage, html[data-xp="luna"] .tl-body, html[data-xp="luna"] .a-tracks, html[data-xp="luna"] .i-viewport { box-shadow: inset 1px 1px 0 #7f9db9, inset -1px -1px 0 #7f9db9; }
-html[data-xp="luna"] .module > .v-left, html[data-xp="luna"] .module > .v-viewer, html[data-xp="luna"] .module > .v-tl, html[data-xp="luna"] .module > .a-main, html[data-xp="luna"] .module > .a-foot, html[data-xp="luna"] .module > .i-stagewrap { box-shadow: inset 0 0 0 1px #aca899; }
-
-/* ==========================================================================
-   DESK and DREAM — every panel is a window on the desktop
-   ========================================================================== */
-html[data-xp="desk"] #main, html[data-xp="dream"] #main { background: none; }
-html[data-xp="desk"] .module { padding: 10px; gap: 10px; }
-html[data-xp="desk"] .module > .panel, html[data-xp="dream"] .module > .panel {
-  --cap: var(--xp-cap-off); --btns: var(--xp-capbtns-off);
-  border: 3px solid transparent; border-top-width: 29px; border-radius: 8px 8px 0 0;
-  background-image: var(--btns), var(--xp-cap), var(--cap), linear-gradient(var(--xp-face), var(--xp-face)), linear-gradient(var(--xp-frame-off, #7a96df), var(--xp-frame-off, #7a96df));
-  background-origin: border-box, border-box, border-box, padding-box, border-box;
-  background-clip: border-box, border-box, border-box, padding-box, border-box;
-  background-position: right 4px top 4px, 1px 3px, 0 0, 0 0, 0 0;
-  background-size: 65px 21px, auto 25px, 100% 29px, 100% 100%, 100% 100%;
-  background-repeat: no-repeat; background-color: transparent;
-  box-shadow: 0 0 0 1px #3a55a8; color: #000;
-}
-html[data-xp="desk"] .module > .panel:hover, html[data-xp="desk"] .module > .panel:focus-within,
-html[data-xp="desk"] .module:not(:has(> .panel:hover, > .panel:focus-within)) > .panel.mhead,
-html[data-xp="dream"] .module > .panel:hover, html[data-xp="dream"] .module:not(:has(> .panel:hover)) > .panel.mhead {
-  --cap: var(--xp-cap-on); --btns: var(--xp-capbtns); --xp-frame-off: var(--xp-frame); box-shadow: 0 0 0 1px var(--xp-frame-dark);
-}
-html[data-xp="desk"] .module > .panel.mhead, html[data-xp="dream"] .module > .panel.mhead { padding: 2px 6px; min-height: 0; overflow: hidden; }
-html[data-xp="desk"] .panel-head, html[data-xp="dream"] .panel-head { height: 28px; padding: 0 6px; background: var(--xp-face); border-bottom: 1px solid #aca899; box-shadow: 0 1px 0 #fff; color: #000; border-radius: 0; }
-html[data-xp="desk"] .panel-head:has(> .panel-title:only-child), html[data-xp="dream"] .panel-head:has(> .panel-title:only-child) { display: none; }
-html[data-xp="desk"] .panel-title, html[data-xp="dream"] .panel-title { display: none; }
-html[data-xp="desk"] #mod-audio, html[data-xp="dream"] #mod-audio { grid-template-rows: auto minmax(200px, 1fr) 152px; }
-html[data-xp="desk"] .module > .v-insp, html[data-xp="desk"] .module > .a-side, html[data-xp="desk"] .module > .i-side { background-image: var(--btns), var(--xp-cap), var(--cap), var(--xp-pane), linear-gradient(var(--xp-frame-off, #7a96df), var(--xp-frame-off, #7a96df)); }
-html[data-xp="desk"] .v-split, html[data-xp="dream"] .v-split { opacity: 0; }
-html[data-xp="desk"] .module > .i-tools, html[data-xp="dream"] .module > .i-tools { --btns: var(--xp-capclose-off); background-size: 21px 21px, auto 25px, 100% 29px, 100% 100%, 100% 100%; }
-html[data-xp="desk"] .module > .i-tools:hover, html[data-xp="dream"] .module > .i-tools:hover { --btns: var(--xp-capclose); }
-html[data-xp="dream"] .module > .i-tools { background-size: 21px 21px, auto 25px, 100% 32px, 160px 160px, 100% 100%, 100% 100%; }
-
-/* ==========================================================================
-   DREAM — chunky 3D windows, grainy faces, an endless hill
-   ========================================================================== */
-html[data-xp="dream"] {
-  --xp-frame: #1747e6; --xp-frame-dark: #0a2a9e; --xp-face: #efe9d4;
-  --xp-cap-on: linear-gradient(180deg, #8fc0ff 0%, #3d86ff 10%, #1a5cf0 45%, #1150e8 70%, #2f74ff 92%, #0b3bc4 100%);
-  --xp-cap-off: linear-gradient(180deg, #8fc0ff 0%, #3d86ff 10%, #1a5cf0 45%, #1150e8 70%, #2f74ff 92%, #0b3bc4 100%);
-  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .37 0 0 0 0 .26 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
-  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='50' viewBox='0 0 17 25'%3E%3Cpath d='M1 1v19l4.6-4.4 3.3 7.6 3.2-1.4-3.3-7.4H15z' fill='%23fff' stroke='%23000' stroke-width='1.1' stroke-linejoin='round'/%3E%3C/svg%3E") 2 2, auto;
-}
-html[data-xp="dream"] .module { padding: 16px 44px 46px 16px; gap: 40px 46px; }
-html[data-xp="dream"] .module > .panel {
-  border-width: 6px; border-top-width: 32px; border-radius: 10px 10px 2px 2px;
-  background-image: var(--btns), var(--xp-cap), var(--cap), var(--grain), linear-gradient(var(--xp-face), var(--xp-face)), linear-gradient(var(--xp-frame), var(--xp-frame));
+/* ---------- windows: every panel is a chunky XP window ---------- */
+html[data-theme="xp"] #main { background: none; }
+html[data-theme="xp"] .module { padding: var(--xp-pt) var(--xp-pr) var(--xp-pb) var(--xp-pl); gap: var(--xp-rg) var(--xp-cg); }
+html[data-theme="xp"] .module > .panel {
+  --cap: var(--xp-cap-off); --btns: var(--xp-capbtns-off); --frame: var(--xp-frame-off);
+  border: var(--xp-side) solid transparent; border-top-width: var(--xp-cap-h); border-radius: 10px 10px 2px 2px;
+  background-image: var(--btns), var(--xp-cap), var(--cap), var(--grain), linear-gradient(var(--xp-face), var(--xp-face)), linear-gradient(var(--frame), var(--frame));
   background-origin: border-box, border-box, border-box, padding-box, padding-box, border-box;
   background-clip: border-box, border-box, border-box, padding-box, padding-box, border-box;
-  background-position: right 7px top 5px, 4px 4px, 0 0, 0 0, 0 0, 0 0;
-  background-size: 65px 21px, auto 25px, 100% 32px, 160px 160px, 100% 100%, 100% 100%;
+  background-position: right var(--xp-btn-right) top var(--xp-btn-top), 4px var(--xp-title-y), 0 0, 0 0, 0 0, 0 0;
+  background-size: 65px 21px, auto 25px, 100% var(--xp-cap-h), 160px 160px, 100% 100%, 100% 100%;
   background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat, no-repeat;
-  box-shadow: 1px 1px 0 #1546e0, 2px 2px 0 #1546e0, 3px 3px 0 #b4cbff, 4px 4px 0 #b4cbff, 5px 5px 0 #1546e0, 6px 6px 0 #1546e0, 7px 7px 0 #b4cbff, 8px 8px 0 #b4cbff, 9px 9px 0 #1546e0, 10px 10px 0 #1546e0, 11px 11px 0 #b4cbff, 12px 12px 0 #b4cbff, 13px 13px 0 #1546e0, 14px 14px 0 #1546e0, 15px 15px 0 #b4cbff, 16px 16px 0 #b4cbff, 17px 17px 0 #1546e0, 18px 18px 0 #1546e0, 19px 19px 0 #b4cbff, 20px 20px 0 #b4cbff, 21px 21px 0 #1546e0, 22px 22px 0 #1546e0, 23px 23px 0 #b4cbff, 24px 24px 0 #b4cbff, 25px 25px 0 #1546e0, 26px 26px 0 #1546e0, 27px 27px 0 #0a2a9e, 34px 40px 26px rgba(0,30,90,.35);
+  background-color: transparent; box-shadow: var(--xp-ext); color: #000;
 }
-html[data-xp="dream"] body::after { content: ''; position: fixed; inset: 0; z-index: 1; pointer-events: none;
-  background: radial-gradient(ellipse 70% 40% at 50% 62%, rgba(255,255,240,.18), transparent 70%), radial-gradient(ellipse at center, transparent 55%, rgba(10,30,90,.32)); mix-blend-mode: screen; }
-html[data-xp="dream"] .module > .panel:hover { transform: translate(-2px, -2px); transition: transform .25s cubic-bezier(.2,1.6,.4,1); }
-html[data-xp="dream"] .modal, html[data-xp="dream"] .menu, html[data-xp="dream"] .xp-start, html[data-xp="dream"] .pal {
-  box-shadow: 1px 1px 0 #0d34b8, 2px 2px 0 #6f9bff, 3px 3px 0 #0d34b8, 4px 4px 0 #6f9bff, 5px 5px 0 #0d34b8, 6px 6px 0 #6f9bff, 7px 7px 0 #0d34b8, 8px 8px 0 #6f9bff, 9px 9px 0 #0a2a9e, 14px 16px 16px rgba(0,30,90,.3);
-}
-html[data-xp="dream"] .menu { border: 2px solid #1747e6; }
-html[data-xp="dream"] .modal { border-width: 6px; border-top-width: 0; }
-html[data-xp="dream"] .modal-head { height: 34px; margin: 0 -6px; font-size: 15px; }
-html[data-xp="dream"] .modal-body, html[data-xp="dream"] .modal-foot { background: var(--grain), var(--xp-face); }
-html[data-xp="dream"] .topbar { height: 34px; box-shadow: 0 -2px 0 #0a2a9e, 0 -5px 0 #6f9bff, 0 -7px 0 #0a2a9e; }
-html[data-xp="dream"] .brand { height: 34px; font-size: 21px; }
-html[data-xp="dream"] .xp-start { bottom: 34px; }
-html[data-xp="dream"] .btn.solid, html[data-xp="dream"] .chip, html[data-xp="dream"] .seg button, html[data-xp="dream"] .modal-foot .btn { border-width: 2px; box-shadow: 2px 2px 0 #0d34b8; }
+/* the window under the mouse (or with keyboard focus) is the active one; otherwise the editor's main window */
+html[data-theme="xp"] .module > .panel:hover, html[data-theme="xp"] .module > .panel:focus-within,
+html[data-theme="xp"] .module:not(:has(> .panel:hover, > .panel:focus-within)) > .panel.mhead { --cap: var(--xp-cap-on); --btns: var(--xp-capbtns); --frame: var(--xp-frame); }
+html[data-theme="xp"] .module > .panel[data-cap="min"] { --btns: var(--xp-capbtns-min); }
+html[data-theme="xp"] .module > .panel[data-cap="max"] { --btns: var(--xp-capbtns-max); }
+html[data-theme="xp"] .module > .panel[data-cap="close"] { --btns: var(--xp-capbtns-close); }
+html[data-theme="xp"] .module > .panel.i-tools { --btns: var(--xp-capclose-off); background-size: 21px 21px, auto 25px, 100% var(--xp-cap-h), 160px 160px, 100% 100%, 100% 100%; }
+html[data-theme="xp"] .module > .panel.i-tools:hover { --btns: var(--xp-capclose); }
+html[data-theme="xp"] .module > .panel.i-tools[data-cap="close"] { --btns: var(--xp-capclose-hot); }
+/* a maximized window covers the editor below its main window */
+html[data-theme="xp"] .module > .panel.xp-maxed { position: absolute; z-index: 6; grid-area: auto !important; left: var(--xp-pl); right: var(--xp-pr); bottom: var(--xp-pb); top: var(--xp-maxtop, var(--xp-pt)); }
+html[data-theme="xp"] .module > .panel.xp-wobble { animation: xpWobble .42s ease; }
+@keyframes xpWobble { 20% { transform: translateX(-7px) rotate(-.4deg); } 40% { transform: translateX(6px) rotate(.3deg); } 60% { transform: translateX(-4px); } 80% { transform: translateX(2px); } }
+html[data-theme="xp"] .module > .panel.mhead { padding: 2px 6px; min-height: 0; overflow: hidden; }
+html[data-theme="xp"] .panel-head { height: 28px; padding: 0 6px; background: var(--xp-face); border-bottom: 1px solid #aca899; box-shadow: 0 1px 0 #fff; color: #000; border-radius: 0; }
+html[data-theme="xp"] .panel-head:has(> .panel-title:only-child) { display: none; }
+html[data-theme="xp"] .module .panel-title { display: none; }
+html[data-theme="xp"] #mod-audio { grid-template-rows: auto minmax(200px, 1fr) 152px; }
+/* the title bars take room: the timeline gives a little of it back to the preview */
+html[data-theme="xp"] #mod-video { grid-template-rows: auto minmax(160px, 1fr) 4px max(170px, min(var(--tl-h, 300px), calc(100 * var(--vh) - 420px))); }
+html[data-theme="xp"] .v-split { opacity: 0; }
+html[data-theme="xp"] .mhead .sep, html[data-theme="xp"] .tl-toolbar .sep { width: 2px; height: 22px; background: none; box-shadow: inset 1px 0 #aca899, inset -1px 0 #fff; margin: 0 3px; }
+/* sunken work areas inside the windows */
+html[data-theme="xp"] .viewer-stage, html[data-theme="xp"] .tl-body, html[data-theme="xp"] .a-tracks, html[data-theme="xp"] .i-viewport { box-shadow: inset 1px 1px 0 #7f9db9, inset -1px -1px 0 #7f9db9; }
+
+/* ---------- 3D everything: menus, dialogs, Start menu, tooltips, balloons, taskbar ---------- */
+html[data-theme="xp"] :is(.modal, .menu, .popover, .xp-start, .pal, .xp-off) { box-shadow: 1px 1px 0 #1546e0, 2px 2px 0 #1546e0, 3px 3px 0 #b4cbff, 4px 4px 0 #b4cbff, 5px 5px 0 #1546e0, 6px 6px 0 #1546e0, 7px 7px 0 #b4cbff, 8px 8px 0 #b4cbff, 9px 9px 0 #1546e0, 10px 10px 0 #1546e0, 11px 11px 0 #0a2a9e, 20px 24px 18px rgba(0,30,90,.3); }
+html[data-theme="xp"] .menu, html[data-theme="xp"] .popover { border: 2px solid var(--xp-frame); }
+html[data-theme="xp"] .modal { border-width: 6px; border-top-width: 0; border-radius: 10px 10px 2px 2px; }
+html[data-theme="xp"] .modal-head { height: 34px; margin: 0 -6px; border-radius: 9px 9px 0 0; font-size: 15px; }
+html[data-theme="xp"] .modal-body, html[data-theme="xp"] .modal-foot { background: var(--grain), var(--xp-face); }
+html[data-theme="xp"] .pal { border-width: 6px; }
+html[data-theme="xp"] .pal::before { margin: 0 -6px; height: 34px; font-size: 15px; }
+html[data-theme="xp"] .tip { box-shadow: 1px 1px 0 #c9b86a, 2px 2px 0 #f3e7a8, 3px 3px 0 #c9b86a, 4px 4px 0 #8a7a2e, 8px 10px 8px rgba(0,30,90,.25); }
+html[data-theme="xp"] .toast { box-shadow: 1px 1px 0 #c9b86a, 2px 2px 0 #f3e7a8, 3px 3px 0 #c9b86a, 4px 4px 0 #f3e7a8, 5px 5px 0 #8a7a2e, 10px 12px 10px rgba(0,30,90,.25); }
+html[data-theme="xp"] .topbar { height: 34px; box-shadow: 0 -2px 0 #0a2a9e, 0 -4px 0 #b4cbff, 0 -6px 0 #1546e0, 0 -8px 0 #b4cbff, 0 -10px 0 #0a2a9e; }
+html[data-theme="xp"] #topbar .brand { height: 34px; font-size: 21px; }
+html[data-theme="xp"] #topbar .brand > span::after { font-size: 21px; }
+html[data-theme="xp"] #topbar .tabs, html[data-theme="xp"] #topbar .tb-right { height: 34px; }
+html[data-theme="xp"] #topbar .tab { height: 26px; }
+html[data-theme="xp"] .xp-start { bottom: 34px; }
+html[data-theme="xp"] .toasts, html[data-theme="xp"] .toasts[data-pos] { bottom: 52px; }
+html[data-theme="xp"] .btn.solid, html[data-theme="xp"] .chip, html[data-theme="xp"] .seg button, html[data-theme="xp"] .modal-foot .btn, html[data-theme="xp"] .btn.primary { border-width: 2px; box-shadow: 2px 2px 0 #0d34b8; }
+html[data-theme="xp"] .btn.primary { box-shadow: inset 0 0 0 1px #cee7ff, inset 0 0 0 2px #98b8ea, 2px 2px 0 #0d34b8; }
+
+/* ---------- the little preview in Preferences ▸ Appearance ---------- */
+.theme-mini[data-theme="xp"] { display: flex; flex-direction: column; background: radial-gradient(ellipse 90% 40% at 30% 118%, #6fd03a 0 60%, transparent 61%), radial-gradient(ellipse 70% 30% at 95% 112%, #3fae25 0 55%, transparent 56%), linear-gradient(180deg, #0638c9, #2f7cf2 45%, #8cc4ff 75%, #e6f4ff); }
+.theme-mini[data-theme="xp"] .topbar { order: 2; height: 30px; padding: 0; background: var(--xp-task, linear-gradient(180deg, #3682e5, #2157d6 40%, #1941a5)); border: 0; box-shadow: 0 -2px 0 #0a2a9e, 0 -4px 0 #b4cbff; }
+.theme-mini[data-theme="xp"] .brand { height: 30px; padding: 0 18px 0 8px; border-radius: 0 12px 12px 0; color: #fff; font: italic 700 16px 'Franklin Gothic Medium', 'Trebuchet MS', sans-serif; background: linear-gradient(180deg, #63c35f, #3a9d39 50%, #1d6b1d); }
+.theme-mini[data-theme="xp"] .brand svg { display: none; }
+.theme-mini[data-theme="xp"] .tm-grid { order: 1; gap: 22px; padding: 12px 26px 26px 12px; height: calc(100% - 30px); }
+.theme-mini[data-theme="xp"] .panel { border: 4px solid #1747e6; border-top-width: 22px; border-radius: 7px 7px 1px 1px; background: #efe9d4; box-shadow: 1px 1px 0 #1546e0, 2px 2px 0 #1546e0, 3px 3px 0 #b4cbff, 4px 4px 0 #b4cbff, 5px 5px 0 #1546e0, 6px 6px 0 #1546e0, 7px 7px 0 #b4cbff, 8px 8px 0 #b4cbff, 9px 9px 0 #1546e0, 10px 10px 0 #1546e0, 11px 11px 0 #0a2a9e; position: relative; }
+.theme-mini[data-theme="xp"] .panel::before { content: ''; position: absolute; left: -4px; right: -4px; top: -22px; height: 22px; border-radius: 6px 6px 0 0; background: linear-gradient(180deg, #8fc0ff 0%, #3d86ff 10%, #1a5cf0 45%, #1150e8 70%, #2f74ff 92%, #0b3bc4 100%); }
+.theme-mini[data-theme="xp"] .panel-head { background: #efe9d4; border-bottom: 1px solid #aca899; }
+.theme-mini[data-theme="xp"] .panel-title { color: #000; text-shadow: none; }
