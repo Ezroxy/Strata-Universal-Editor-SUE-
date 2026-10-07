@@ -331,7 +331,12 @@ D.detectSilence = (lv, hop, t0, o = {}) => {
   const sorted = Float32Array.from(lv).filter(v => v > -119).sort();
   const pct = p => sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))] : -120;
   const floor = pct(0.1), loud = pct(0.95);
-  const T = mode === 'manual' ? threshold : (loud - floor < 6 ? floor + 3 : floor + (loud - floor) * (0.12 + 0.5 * sensitivity));
+  // a steady level with nothing quieter means it's all background noise (all silence) — unless it is too loud to be
+  // noise, or there are stretches of true digital silence to compare with (generated or already-muted audio): then that
+  // steady level is the sound itself
+  const digital = lv.length - sorted.length;
+  const steady = digital > 0 || floor > -35 ? floor - 6 : floor + 3;
+  const T = mode === 'manual' ? threshold : (loud - floor < 6 ? steady : floor + (loud - floor) * (0.12 + 0.5 * sensitivity));
   // gate with hysteresis → sound/silence per frame
   const n = lv.length, sound = new Uint8Array(n);
   let open = false;
