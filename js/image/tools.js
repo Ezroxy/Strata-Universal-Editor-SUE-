@@ -14,7 +14,7 @@ I.opts = {
   fill: { tolerance: 32, contiguous: true, all: false, opacity: 1 },
   gradient: { type: 'linear', transparent: false, opacity: 1 },
   shape: { type: 'rect', mode: 'outline', width: 4, radius: 18 },
-  text: { font: 'Manrope', size: 64, bold: true, italic: false, align: 'left', color: '#1d1d1f' },
+  text: { font: 'Manrope', size: 64, bold: true, italic: false, align: 'left', color: '#1d1d1f', stroke: '#000000', strokeW: 0, shadow: 'none', spacing: 0, lineH: 1.2 },
   select: { mode: 'new' },
   wand: { tolerance: 32, contiguous: true, all: false },
   crop: { ratio: 'free' },
@@ -356,17 +356,34 @@ T.shape = {
 /* ---------- editable text layers ---------- */
 const FONTS = ['Manrope', 'Bebas Neue', 'Playfair Display', 'Pacifico', 'Permanent Marker', 'JetBrains Mono', 'Arial', 'Georgia', 'Impact', 'Times New Roman', 'Courier New', 'Comic Sans MS', 'Verdana'];
 I.textFont = (o, scale = 1) => `${o.italic ? 'italic ' : ''}${o.bold ? 800 : 500} ${o.size * scale}px "${o.font}", Manrope, sans-serif`;
+/** every style setting a text layer keeps (older saves may lack the newer ones — TEXT_DEF fills them in) */
+const TEXT_KEYS = ['font', 'size', 'bold', 'italic', 'align', 'color', 'stroke', 'strokeW', 'shadow', 'spacing', 'lineH'];
+const TEXT_DEF = { stroke: '#000000', strokeW: 0, shadow: 'none', spacing: 0, lineH: 1.2 };
+const textStyle = t => Object.fromEntries(TEXT_KEYS.map(k => [k, t[k] ?? TEXT_DEF[k]]));
+const optsFromText = t => Object.assign(I.opts.text, textStyle(t));
 I.renderText = L => {
-  const t = L.text, ctx = L.ctx;
+  const t = L.text, ctx = L.ctx, sw = t.strokeW || 0, sh = t.shadow || 'none', lh = t.size * (t.lineH || 1.2);
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, L.canvas.width, L.canvas.height);
-  ctx.font = I.textFont(t); ctx.textBaseline = 'top'; ctx.fillStyle = t.color;
+  ctx.font = I.textFont(t); ctx.textBaseline = 'top';
+  if ('letterSpacing' in ctx) ctx.letterSpacing = (t.spacing || 0) + 'px';
   const lines = t.content.split('\n'), widths = lines.map(l => ctx.measureText(l).width), mw = Math.max(1, ...widths);
+  const shadow = on => {
+    ctx.shadowColor = 'transparent'; ctx.shadowBlur = ctx.shadowOffsetX = ctx.shadowOffsetY = 0;
+    if (!on || sh === 'none') return;
+    if (sh === 'soft') { ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = t.size * 0.16; ctx.shadowOffsetY = t.size * 0.05; }
+    else if (sh === 'hard') { ctx.shadowColor = 'rgba(0,0,0,.85)'; ctx.shadowOffsetX = ctx.shadowOffsetY = Math.max(2, t.size * 0.06); }
+    else if (sh === 'glow') { ctx.shadowColor = t.color; ctx.shadowBlur = t.size * 0.4; }
+  };
   lines.forEach((l, i) => {
-    const x = t.align === 'left' ? t.x : t.align === 'center' ? t.x + (mw - widths[i]) / 2 : t.x + mw - widths[i];
-    ctx.fillText(l, x, t.y + i * t.size * 1.2 + t.size * 0.08);
+    const x = t.align === 'left' ? t.x : t.align === 'center' ? t.x + (mw - widths[i]) / 2 : t.x + mw - widths[i], y = t.y + i * lh + t.size * 0.08;
+    shadow(true);
+    // the outline sits behind the fill, so letters keep their full shape
+    if (sw > 0) { ctx.lineJoin = 'round'; ctx.lineWidth = sw * 2; ctx.strokeStyle = t.stroke || '#000000'; ctx.strokeText(l, x, y); shadow(sh === 'glow'); }
+    ctx.fillStyle = t.color; ctx.fillText(l, x, y);
   });
   ctx.restore();
-  L.textBounds = { x: t.x - 4, y: t.y - 4, w: mw + 8, h: lines.length * t.size * 1.2 + 8 };
+  const pad = 4 + sw + (sh === 'none' ? 0 : sh === 'glow' ? t.size * 0.3 : t.size * 0.12);
+  L.textBounds = { x: t.x - pad, y: t.y - pad, w: mw + pad * 2, h: (lines.length - 1) * lh + t.size * 1.2 + pad * 2 };
   I.dirty(L);
 };
 const textLayerAt = p => [...I.doc.layers].reverse().find(L => L.visible && L.text && L.textBounds && !L._editing && p.x >= L.textBounds.x && p.x <= L.textBounds.x + L.textBounds.w && p.y >= L.textBounds.y && p.y <= L.textBounds.y + L.textBounds.h);
@@ -383,14 +400,14 @@ I.applyTextOpts = () => {
   if (I.textEdit) return I.styleTextEdit();
   const L = I.active();
   if (I.tool !== 'text' || !L || !L.text) return;
-  Object.assign(L.text, { font: I.opts.text.font, size: I.opts.text.size, bold: I.opts.text.bold, italic: I.opts.text.italic, align: I.opts.text.align, color: I.opts.text.color });
+  Object.assign(L.text, textStyle(I.opts.text));
   I.renderText(L);
   clearTimeout(textHistTimer); textHistTimer = setTimeout(() => I.pushHistory('Text style', 'text'), 500);
 };
 T.text = {
   name: 'Text', icon: 'text', key: 'T', cursor: 'text',
   tip: 'Click on the image to type. Each text is its own layer and stays editable — click existing text with this tool to change it. Ctrl+Enter or click elsewhere to finish, Esc to cancel.',
-  activate() { const L = I.active(); if (L && L.text) Object.assign(I.opts.text, { font: L.text.font, size: L.text.size, bold: L.text.bold, italic: L.text.italic, align: L.text.align, color: L.text.color }); },
+  activate() { const L = I.active(); if (L && L.text) optsFromText(L.text); },
   options: () => {
     const o = I.opts.text;
     const fontSel = App.select({ bare: true, label: 'Font', value: o.font, options: App.fontOptions(FONTS, o.font), tip: 'Typeface — includes the fonts extracted from GTA San Andreas and L.A. Noire, and any fonts you import in Settings ▸ Fonts.', onChange: v => {
@@ -400,12 +417,30 @@ T.text = {
     } });
     const col = App.color({ bare: true, label: 'Text color', value: o.color, tip: 'Color of the text (separate from the paint colors).', onInput: v => { o.color = v; I.applyTextOpts(); } });
     const L = I.active();
+    const styled = o.strokeW > 0 || o.shadow !== 'none' || o.spacing || o.lineH !== 1.2;
+    const styleBtn = btn({ icon: 'sparkle', label: 'Style', cls: 'sm txt' + (styled ? ' on' : ''), title: 'Text style', tip: 'Outline, shadow or glow, letter spacing and line spacing — makes text readable on busy photos and gives it character.', onClick: () => {
+      if (I.textStyleWin && I.textStyleWin.el.isConnected) return;
+      const set = (k, v) => { o[k] = v; I.applyTextOpts(); styleBtn.isConnected && styleBtn.classList.toggle('on', o.strokeW > 0 || o.shadow !== 'none' || !!o.spacing || o.lineH !== 1.2); };
+      const md = I.textStyleWin = App.modal({ title: 'Text style', icon: 'text', width: 340, clear: true, buttons: [{ label: 'Done', primary: true }], onClose: () => { I.textStyleWin = null; }, body: h('div', { class: 'text-style-pop' },
+        h('div', { class: 'hint', style: { paddingTop: 0 } }, L && L.text ? 'Changes apply to the selected text layer as you go.' : 'Applies to the next text you add — or select a text layer to restyle it.'),
+        App.color({ label: 'Outline color', value: o.stroke, tip: 'Color of the outline around the letters.', onInput: v => set('stroke', v) }),
+        App.slider({ label: 'Outline', min: 0, max: 40, step: 0.5, value: o.strokeW, def: 0, unit: 'px', tip: 'Thickness of the outline. 0 = none.', onInput: v => set('strokeW', v) }),
+        App.select({ label: 'Shadow', value: o.shadow, tip: 'Adds depth — or a neon glow in the text’s own color.', options: [['none', 'None'], ['soft', 'Soft shadow'], ['hard', 'Hard shadow'], ['glow', 'Glow']], onChange: v => set('shadow', v) }),
+        App.slider({ label: 'Letter spacing', min: -20, max: 80, step: 0.5, value: o.spacing, def: 0, unit: 'px', tip: 'Space between letters — wide spacing looks elegant on titles.', onInput: v => set('spacing', v) }),
+        App.slider({ label: 'Line spacing', min: 0.7, max: 3, step: 0.05, value: o.lineH, def: 1.2, unit: '×', tip: 'Distance between lines, as a multiple of the text size.', onInput: v => set('lineH', v) }),
+        h('div', { class: 'chips', style: { padding: '6px 12px 2px' } }, [['Clean', { strokeW: 0, shadow: 'none' }], ['Meme', { strokeW: Math.max(2, Math.round(o.size / 14)), stroke: '#000000', shadow: 'none', color: '#ffffff' }], ['Soft shadow', { shadow: 'soft' }], ['Neon', { shadow: 'glow', strokeW: 0 }]].map(([n, p]) => {
+          const c = h('button', { class: 'chip', title: n, tip: 'Apply this style, then fine-tune above.' }, n);
+          c.addEventListener('click', () => { Object.assign(o, p); I.applyTextOpts(); md.close(); I.optionsUI(); });
+          return c;
+        }))) });
+      I.dockModal(md);
+    } });
     return [fontSel,
       os('Size', o, 'size', 6, 400, 1, 'px', 'Text size in image pixels.', 1, I.applyTextOpts),
       btn({ icon: 'bold', cls: 'sm' + (o.bold ? ' on' : ''), title: 'Bold', tip: 'Heavier letters.', onClick: e => { o.bold = !o.bold; e.currentTarget.classList.toggle('on', o.bold); I.applyTextOpts(); } }),
       btn({ icon: 'italic', cls: 'sm' + (o.italic ? ' on' : ''), title: 'Italic', tip: 'Slanted letters.', onClick: e => { o.italic = !o.italic; e.currentTarget.classList.toggle('on', o.italic); I.applyTextOpts(); } }),
       oseg(o, 'align', [{ value: 'left', icon: 'alignL', title: 'Left', tip: 'Align lines left.' }, { value: 'center', icon: 'alignC', title: 'Center', tip: 'Center lines.' }, { value: 'right', icon: 'alignR', title: 'Right', tip: 'Align lines right.' }], () => I.applyTextOpts()),
-      col,
+      col, styleBtn,
       h('span', { class: 'hint', style: { padding: 0 } }, L && L.text ? 'Editing the selected text layer — click its text to retype it.' : 'Click the canvas to add text.')];
   },
   down(e, p) {
@@ -417,7 +452,7 @@ T.text = {
   deactivate() { if (I.textEdit) I.commitText(); },
 };
 I.startText = (x, y, layer) => {
-  if (layer) Object.assign(I.opts.text, { font: layer.text.font, size: layer.text.size, bold: layer.text.bold, italic: layer.text.italic, align: layer.text.align, color: layer.text.color });
+  if (layer) optsFromText(layer.text);
   const ta = h('textarea', { class: 'i-textedit', spellcheck: 'false' });
   if (layer) { ta.value = layer.text.content; layer._editing = true; I.composite(); }
   I.textEdit = { ta, x, y, layer };
@@ -438,11 +473,14 @@ I.styleTextEdit = () => {
   const E = I.textEdit;
   if (!E) return;
   const o = I.opts.text, ta = E.ta, s = I.toScreen(E.x, E.y);
-  Object.assign(ta.style, { left: s.x + 'px', top: s.y + 'px', font: I.textFont(o, I.zoom), color: o.color, textAlign: o.align, lineHeight: '1.2' });
+  const lh = o.lineH || 1.2, sp = (o.spacing || 0) * I.zoom;
+  Object.assign(ta.style, { left: s.x + 'px', top: s.y + 'px', font: I.textFont(o, I.zoom), color: o.color, textAlign: o.align, lineHeight: String(lh), letterSpacing: sp + 'px',
+    webkitTextStroke: o.strokeW > 0 ? `${o.strokeW * 2 * I.zoom}px ${o.stroke}` : '', paintOrder: 'stroke fill' });
   const lines = ta.value.split('\n');
   const mc = document.createElement('canvas').getContext('2d'); mc.font = I.textFont(o, I.zoom);
+  if ('letterSpacing' in mc) mc.letterSpacing = sp + 'px';
   ta.style.width = Math.max(40, ...lines.map(l => mc.measureText(l).width)) + o.size * I.zoom * 0.6 + 'px';
-  ta.style.height = lines.length * o.size * I.zoom * 1.2 + 6 + 'px';
+  ta.style.height = lines.length * o.size * I.zoom * lh + 6 + 'px';
 };
 I.cancelText = () => { const E = I.textEdit; if (!E) return; E.ta.remove(); I.textEdit = null; if (E.layer) { E.layer._editing = false; I.composite(); } };
 I.commitText = () => {
@@ -454,8 +492,8 @@ I.commitText = () => {
   if (E.layer) {
     E.layer._editing = false;
     if (!txt) { const i = I.doc.layers.indexOf(E.layer); if (i >= 0 && I.doc.layers.length > 1) { I.doc.layers.splice(i, 1); I.doc.active = Math.max(0, Math.min(I.doc.active, I.doc.layers.length - 1)); } I.compositeNow(); I.pushHistory('Delete text', 'trash'); return; }
-    if (txt === E.layer.text.content && ['font', 'size', 'bold', 'italic', 'align', 'color'].every(k => E.layer.text[k] === o[k])) { I.composite(); return; }
-    Object.assign(E.layer.text, { content: txt, font: o.font, size: o.size, bold: o.bold, italic: o.italic, align: o.align, color: o.color });
+    if (txt === E.layer.text.content && TEXT_KEYS.every(k => (E.layer.text[k] ?? TEXT_DEF[k]) === o[k])) { I.composite(); return; }
+    Object.assign(E.layer.text, { content: txt }, textStyle(o));
     E.layer.name = 'Text: ' + txt.split('\n')[0].slice(0, 18);
     I.renderText(E.layer);
     I.pushHistory('Edit text', 'text');
@@ -463,7 +501,7 @@ I.commitText = () => {
   }
   if (!txt) return;
   const L = I.addLayer('Text: ' + txt.split('\n')[0].slice(0, 18));
-  L.text = { content: txt, x: E.x, y: E.y, font: o.font, size: o.size, bold: o.bold, italic: o.italic, align: o.align, color: o.color };
+  L.text = { content: txt, x: E.x, y: E.y, ...textStyle(o) };
   I.renderText(L);
   I.pushHistory('Text', 'text');
   I.optionsUI && I.optionsUI();

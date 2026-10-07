@@ -589,6 +589,38 @@ A.exportDialog = (selOnly = false, preset) => {
     } }],
   });
 };
+/** Every region marker → its own file (split a recording into songs, chapters or takes in one go). */
+A.exportRegions = () => {
+  const regs = A.markers.filter(m => m.t1 != null && m.t1 - m.t > 0.01).sort((a, b) => a.t - b.t);
+  if (!regs.length) return App.toast('Make some regions first: select a range and press M (or use Remove silences ▸ Mark)', 'warn', 5000);
+  const hasEnc = typeof window.AudioEncoder === 'function';
+  const fmtSel = App.select({ label: 'Format', value: 'wav16', tip: 'WAV is lossless. M4A and Opus are much smaller.', options: [['wav16', 'WAV · 16-bit (CD quality)'], ['wav24', 'WAV · 24-bit'], ...(hasEnc ? [['m4a', 'M4A · AAC 256 kbps'], ['opus', 'Opus (WebM) · 160 kbps']] : [])] });
+  const ch = App.select({ label: 'Channels', value: '2', tip: 'Stereo keeps left/right placement; mono files are half the size.', options: [['2', 'Stereo'], ['1', 'Mono']] });
+  const safe = s => String(s).replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, ' ').trim();
+  const list = h('div', { class: 'region-list' }, regs.map((m, i) => h('div', null, h('i', { style: { background: m.color } }), h('b', null, `${String(i + 1).padStart(2, '0')} ${m.label}`), h('span', { class: 'mono' }, `${fmt(m.t)} → ${fmt(m.t1)}`))));
+  App.modal({
+    title: 'Export regions', icon: 'download', width: 460,
+    body: h('div', null, h('div', { class: 'hint', style: { paddingTop: 0 } }, `Saves each of the ${regs.length} region${regs.length > 1 ? 's' : ''} as its own file, named after the region. The mix respects volume, pan, envelopes, mute and solo.`), fmtSel, ch, list),
+    buttons: [{ label: 'Cancel' }, { label: `Export ${regs.length} file${regs.length > 1 ? 's' : ''}`, icon: 'download', primary: true, onClick: async () => {
+      const f = fmtSel.get(), nCh = +ch.get(), base = safe(A.name) || 'audio';
+      A.busy(true, 'Exporting regions…');
+      try {
+        for (let i = 0; i < regs.length; i++) {
+          const m = regs[i];
+          A.busy(true, `Exporting region ${i + 1} of ${regs.length}…`);
+          const ab = await A.mixdown(m.t, m.t1, nCh), chs = Array.from({ length: ab.numberOfChannels }, (_, k) => ab.getChannelData(k));
+          let blob, ext;
+          if (f.startsWith('wav')) { blob = D.encodeWAV(chs, A.sr, +f.slice(3)); ext = 'wav'; }
+          else { blob = await App.mux.encodeAudioFile(chs, A.sr, f === 'opus' ? 'webm' : 'mp4', f === 'opus' ? 160000 : 256000); ext = f === 'opus' ? 'webm' : 'm4a'; }
+          App.download(blob, `${base} - ${String(i + 1).padStart(2, '0')} ${safe(m.label) || 'Region'}.${ext}`);
+          await App.sleep(350);   // browsers drop downloads that arrive all at once
+        }
+        App.toast(`Exported ${regs.length} file${regs.length > 1 ? 's' : ''}`, 'ok');
+      } catch (e) { App.toast('Export failed: ' + e.message, 'err', 5000); }
+      A.busy(false);
+    } }],
+  });
+};
 A.sendToVideo = async () => {
   if (!A.tracks.length) return App.toast('Nothing to send yet', 'warn');
   const ab = await A.mixdown(0, A.duration(), 2);
@@ -748,6 +780,7 @@ function menus() {
       { sep: true },
       { label: 'Export…', icon: 'download', key: 'Ctrl+E', tip: 'Mix every audible track into a WAV, M4A or Opus file.', action: () => A.exportDialog(false) },
       { label: 'Export selection…', icon: 'download', disabled: () => !A.sel, tip: 'Export only the selected time range.', action: () => A.exportDialog(true) },
+      { label: 'Export regions as files…', icon: 'flag', disabled: () => !A.markers.some(m => m.t1 != null), tip: 'Saves every region as its own file, named after the region — split a recording into songs, chapters or takes in one go.', action: A.exportRegions },
       { label: 'Send mix to Video editor', icon: 'film', tip: 'Adds the mixdown to the Video tab’s media bin — perfect for soundtracks and cleaned-up voice-overs.', action: A.sendToVideo },
     ] },
     { label: 'Edit', tip: 'Cut, copy, paste and selection commands.', items: () => [
@@ -1363,6 +1396,7 @@ function markerMenu(m) {
     { label: 'Color', icon: 'palette', tip: 'Color-code markers by meaning.', sub: MCOLORS.map(c => ({ label: COLOR_NAMES[c] || c, swatch: c, checked: m.color === c, action: () => { A.commit('Marker color'); m.color = c; A.changed(); } })) },
     m.t1 != null ? { label: 'Select region', icon: 'cursor', tip: 'Selects this region on all tracks.', action: () => { A.sel = { t0: m.t, t1: m.t1 }; if (!A.selTracks().length) A.tracks.forEach(t => t.selected = true); A.renderHeads(); A.redraw(); } } : null,
     m.t1 != null ? { label: 'Export region…', icon: 'download', tip: 'Exports just this region as its own file.', action: () => A.exportDialog(false, { t0: m.t, t1: m.t1, label: m.label, name: m.label }) } : null,
+    m.t1 != null ? { label: 'Export all regions…', icon: 'download', tip: 'Saves every region as its own file in one go.', action: A.exportRegions } : null,
     { label: 'Delete', icon: 'trash', tip: 'Removes this marker.', action: () => { A.commit('Delete marker'); A.markers = A.markers.filter(x => x !== m); A.changed(); } },
   ];
 }

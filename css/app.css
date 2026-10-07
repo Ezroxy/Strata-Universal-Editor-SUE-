@@ -596,6 +596,13 @@ kbd, .kbd { font-family: var(--mono); font-size: 10px; font-weight: 600; padding
 .clip .c-tr.out { right: 0; border-left: 1px solid rgba(255,255,255,.55); }
 .clip .c-kf { position: absolute; bottom: 3px; width: 7px; height: 7px; margin-left: -3.5px; background: #ffe14a; transform: rotate(45deg); border-radius: calc(1px * var(--round)); box-shadow: 0 0 0 1px rgba(0,0,0,.5); pointer-events: none; z-index: 2; }
 .clip .h { position: absolute; top: 0; bottom: 0; width: 9px; cursor: ew-resize; z-index: 3; }
+/* audio fade knobs: where the fade ramp ends, between the label and the waveform */
+.clip .c-fade { position: absolute; top: 13px; width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px rgba(0,0,0,.55), 0 1px 3px rgba(0,0,0,.5); cursor: ew-resize; z-index: 4; opacity: 0; transition: opacity .15s, transform .15s; }
+.clip:not(.k-audio) .c-fade { top: auto; bottom: 17px; }
+.clip:hover .c-fade, .clip.sel .c-fade, .clip .c-fade.set { opacity: 1; }
+.clip .c-fade:hover { transform: scale(1.25); }
+.clip .c-fade.set { background: #ffe14a; }
+.tl-body.tool-blade .clip .c-fade, .tl-body.tool-slip .clip .c-fade { display: none; }
 .clip .h.l { left: 0; }
 .clip .h.r { right: 0; }
 .clip .h:hover, .clip .h.act { background: linear-gradient(90deg, rgba(255,255,255,.6), transparent); }
@@ -857,6 +864,17 @@ kbd, .kbd { font-family: var(--mono); font-size: 10px; font-weight: 600; padding
   .brand em { display: none; }
   .workflow .wf-step { padding-right: 8px; }
 }
+
+/* ---------- image: text style popover ---------- */
+.text-style-pop { padding-bottom: 4px; }
+
+/* ---------- audio: export regions list ---------- */
+.region-list { margin: 6px 16px 4px; max-height: 200px; overflow: auto; border: 1px solid var(--line); border-radius: calc(9px * var(--round)); background: var(--well); }
+.region-list > div { display: flex; align-items: center; gap: 8px; padding: 5px 10px; font-size: 12px; border-bottom: 1px solid var(--line); }
+.region-list > div:last-child { border-bottom: 0; }
+.region-list i { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.region-list b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.region-list .mono { color: var(--muted); font-size: 11px; }
 
 /* ---------- remove silences dialog ---------- */
 .sil { padding: 4px 18px 6px; }

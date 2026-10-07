@@ -261,6 +261,7 @@ P.rebuildInspector = () => {
       sl(audible, 'Fade out', { min: 0, max: 10, step: 0.05, def: 0, unit: 's', tip: 'Ramps the volume down smoothly at the end of the clip.' }, c => c.fadeOut, (c, v) => c.fadeOut = Math.min(v, c.dur), relayout),
       h('div', { class: 'ctl' }, h('div', { class: 'btn-row wrap' },
         btn({ icon: audible[0].muted ? 'volume' : 'mute', label: audible[0].muted ? 'Unmute' : 'Mute', cls: 'solid txt sm', title: 'Mute clip', tip: 'Silences only these clips.', onClick: () => { apply(audible, 'Mute', c => c.muted = !audible[0].muted); P.rebuildInspector(); } }),
+        btn({ icon: 'normalize', label: 'Normalize', cls: 'solid txt sm', title: 'Normalize loudness', tip: 'Sets the volume so these clips sound as loud as YouTube and Spotify expect (−14 LUFS). More targets in Clip ▸ Normalize loudness.', onClick: () => O().normalizeLoudness(-14, audible) }),
         audible.some(c => c.kind === 'video') ? btn({ icon: 'detach', label: 'Detach', cls: 'solid txt sm', title: 'Detach audio', tip: 'Moves the sound to its own audio track.', onClick: () => O().detachAudio(audible) }) : null,
         btn({ icon: 'wave', label: 'Edit in Audio tab', cls: 'solid txt sm', title: 'Open in Audio editor', tip: 'Sends the used part of this sound to the Audio tab for noise reduction, EQ and more.', onClick: () => sendClipAudio(audible[audible.length - 1]) }),
       )),

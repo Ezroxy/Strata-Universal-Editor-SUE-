@@ -349,20 +349,28 @@ F.heal = (layer, mask, radius = 20) => {
   // full-res mask lookup for rejecting sources that overlap the damage
   const covered = (gx, gy) => md[(gy * W + gx) * 4 + 3] > 8;
   let best = null, bestScore = Infinity;
-  const dists = [reach * 0.55, reach * 0.8, reach];
-  for (const dist of dists) for (let k = 0; k < 16; k++) {
-    const a = k / 16 * Math.PI * 2, ox = Math.round(Math.cos(a) * dist), oy = Math.round(Math.sin(a) * dist);
-    if (x0 + ox < ex0 || y0 + oy < ey0 || x1 + ox > ex1 || y1 + oy > ey1) continue;
-    let s = 0, n = 0, bad = false;
-    for (let y = 0; y < hh && !bad; y += 2) for (let x = 0; x < w; x += 2) {
-      if (covered(x + x0 + ox, y + y0 + oy)) { bad = true; break; }
-      if (U[y * w + x]) continue;
+  // the known ring around the damage, sampled sparsely: what a good source patch has to match
+  const ring = [], sp = Math.max(1, Math.round(Math.sqrt(w * hh / 1500)));
+  for (let y = 0; y < hh; y += sp) for (let x = 0; x < w; x += sp) if (!U[y * w + x]) ring.push(x, y);
+  const score = (ox, oy, limit) => {
+    if (x0 + ox < ex0 || y0 + oy < ey0 || x1 + ox > ex1 || y1 + oy > ey1) return Infinity;
+    if (Math.abs(ox) < w * 0.5 && Math.abs(oy) < hh * 0.5) return Infinity;   // mostly overlapping itself
+    let s = 0;
+    for (let i = 0; i < ring.length; i += 2) {
+      const x = ring[i], y = ring[i + 1];
       for (let c = 0; c < 3; c++) { const d = T(x, y, c) - T(x + ox, y + oy, c); s += d * d; }
-      n++;
+      if (s > limit) return Infinity;
     }
-    if (bad || !n) continue;
-    s /= n;
-    if (s < bestScore) { bestScore = s; best = [ox, oy]; }
+    return s;
+  };
+  const clean = (ox, oy) => { for (let y = 0; y < hh; y += 2) for (let x = 0; x < w; x += 2) if (covered(x + x0 + ox, y + y0 + oy)) return false; return true; };
+  const tryAt = (ox, oy) => { const s = score(ox, oy, bestScore); if (s < bestScore && clean(ox, oy)) { bestScore = s; best = [ox, oy]; } };
+  // coarse grid over every offset in reach, then refine pixel by pixel around the best one — so repeating
+  // textures (stripes, tiles, brick, foliage) line up instead of showing a seam
+  if (ring.length) {
+    const step = Math.max(2, Math.round(reach / 28));
+    for (let oy = -reach; oy <= reach; oy += step) for (let ox = -reach; ox <= reach; ox += step) tryAt(ox, oy);
+    if (best) { const [bx, by] = best; for (let oy = by - step; oy <= by + step; oy++) for (let ox = bx - step; ox <= bx + step; ox++) tryAt(ox, oy); }
   }
   const out = ctx.getImageData(x0, y0, w, hh), od = out.data;
   for (let c = 0; c < 4; c++) {
