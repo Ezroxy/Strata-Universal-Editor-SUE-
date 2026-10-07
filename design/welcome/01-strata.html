@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strata — Sediment</title>
+<link rel="stylesheet" href="../../css/fonts.css">
+<script src="../../js/core/icons.js"></script>
+<script src="common.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #0c0d11; overflow: hidden; font-family: Manrope, sans-serif; color: #f4f0e8; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  header { position: fixed; left: 6vw; top: 8vh; z-index: 2; pointer-events: none; }
+  header .row { display: flex; align-items: center; gap: 22px; }
+  h1 { margin: 0; font: italic 700 clamp(54px, 7.4vw, 118px)/.9 'Playfair Display', serif; letter-spacing: -.02em; }
+  h1 span { display: block; font: 800 clamp(13px, 1.1vw, 17px)/1 Manrope; letter-spacing: .62em; font-style: normal; color: #b9b4aa; margin: 14px 0 0 6px; }
+  header p { margin: 22px 0 0 4px; max-width: 520px; color: #a9a49b; font-size: clamp(13px, 1.05vw, 16px); line-height: 1.6; }
+  header .depth { position: absolute; left: -3.3vw; top: 6px; bottom: -14px; width: 1px; background: linear-gradient(#fff3, transparent); }
+  nav { position: fixed; right: 5vw; top: 8vh; z-index: 3; display: flex; gap: 6px; }
+  nav button { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); color: #e9e4da; font: 700 12px Manrope; cursor: pointer; backdrop-filter: blur(6px); transition: background .2s, border-color .2s; }
+  nav button:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.3); }
+  nav kbd { font: 600 10px 'JetBrains Mono'; opacity: .55; }
+  .label { position: fixed; left: 0; right: 0; z-index: 2; display: flex; align-items: flex-start; padding: 0 6vw; pointer-events: none; transition: opacity .3s; }
+  .label .num { font: 600 12px 'JetBrains Mono'; letter-spacing: .2em; opacity: .7; width: 64px; padding-top: 1.4vw; }
+  .label .nm { font: 400 clamp(46px, 6.4vw, 104px)/1 'Bebas Neue', sans-serif; letter-spacing: .03em; text-shadow: 0 2px 30px rgba(0,0,0,.25); }
+  .label .more { margin-left: 5vw; padding-top: 1.1vw; max-width: 560px; opacity: 0; transform: translateY(10px); transition: opacity .35s, transform .45s cubic-bezier(.2,1,.3,1); }
+  .label.open .more { opacity: 1; transform: none; }
+  .label .more p { margin: 0 0 12px; font-size: clamp(14px, 1.15vw, 18px); font-weight: 650; line-height: 1.45; }
+  .label .more ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 22px; }
+  .label .more li { font-size: 13px; font-weight: 600; opacity: .85; display: flex; gap: 8px; align-items: baseline; }
+  .label .more li::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .6; transform: translateY(-1px); flex: none; }
+  .label .go { margin-left: auto; padding-top: 1.3vw; display: flex; align-items: center; gap: 10px; font: 800 13px Manrope; letter-spacing: .08em; text-transform: uppercase; opacity: 0; transition: opacity .3s; }
+  .label.open .go { opacity: 1; }
+  .label .go i { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: rgba(0,0,0,.22); }
+  .core { position: fixed; z-index: 2; right: 6vw; bottom: 3.5vh; font: 600 10.5px 'JetBrains Mono'; letter-spacing: .14em; color: rgba(255,255,255,.55); pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<header>
+  <div class="depth"></div>
+  <div class="row"><h1>Strata<span>STUDIO</span></h1></div>
+  <p id="tag"></p>
+</header>
+<nav id="nav"></nav>
+<div id="labels"></div>
+<div class="core">EVERY PROJECT IS BUILT IN LAYERS · PRESS 1 · 2 · 3</div>
+<script>
+const M = SW.modes, cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+document.getElementById('tag').textContent = SW.tagline;
+document.getElementById('nav').innerHTML = SW.actions.map(([ic, l, k]) => `<button>${SW.icon(ic, 15)}${l}${k ? `<kbd>${k}</kbd>` : ''}</button>`).join('');
+let W, H, dpr;
+const resize = () => { dpr = devicePixelRatio || 1; W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
+addEventListener('resize', resize); resize();
+
+// film grain tile
+const grain = document.createElement('canvas'); grain.width = grain.height = 220;
+{ const g = grain.getContext('2d'), id = g.createImageData(220, 220); for (let i = 0; i < id.data.length; i += 4) { const v = Math.random() * 255; id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = 255; } g.putImageData(id, 0, 0); }
+const grainPat = ctx.createPattern(grain, 'repeat');
+// sediment specks per band (fixed)
+const rnd = (s => () => (s = (s * 16807) % 2147483647) / 2147483647)(7);
+const specks = M.map(() => Array.from({ length: 120 }, () => ({ u: rnd(), v: rnd(), r: 0.6 + rnd() * 2.4, a: 0.1 + rnd() * 0.25, d: rnd() < 0.5 })));
+const dust = Array.from({ length: 70 }, () => ({ x: Math.random(), y: Math.random() * 0.4, s: 0.2 + Math.random() * 0.8, p: Math.random() * 6 }));
+
+const labels = M.map((m, i) => {
+  const el = document.createElement('div'); el.className = 'label';
+  el.innerHTML = `<div class="num">0${i + 1}</div><div class="nm">${m.name}</div><div class="more"><p>${m.desc}</p><ul>${m.pts.map(p => `<li>${p}</li>`).join('')}</ul></div><div class="go">Open ${m.name}<i>${SW.icon('chevRight', 18, 2.4)}</i></div>`;
+  el.style.color = i === 2 ? '#fff' : '#14100c';
+  document.getElementById('labels').append(el);
+  return el;
+});
+
+let hover = -1, t0 = performance.now();
+const weight = M.map(() => 0), born = M.map((_, i) => 380 + i * 260);   // sediment settles in, one layer at a time
+const boundary = (i, x, t, amp) => Math.sin(x / W * Math.PI * 2 * 1.3 + t * 0.35 + i * 2.1) * amp * 0.6 + Math.sin(x / W * Math.PI * 2 * 3.4 - t * 0.22 + i * 1.3) * amp * 0.4;
+let tops = [];
+function frame(now) {
+  const t = (now - t0) / 1000;
+  ctx.clearRect(0, 0, W, H);
+  // night "air" above the ground
+  const sky = ctx.createLinearGradient(0, 0, 0, H * 0.5); sky.addColorStop(0, '#0b0c10'); sky.addColorStop(1, '#16151a');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+  for (const d of dust) { const y = (d.y + t * 0.004 * d.s) % 0.42; ctx.fillStyle = `rgba(255,240,220,${0.08 + 0.12 * Math.sin(t + d.p) ** 2})`; ctx.beginPath(); ctx.arc(d.x * W + Math.sin(t * 0.3 + d.p) * 10, y * H, d.s * 1.2, 0, 7); ctx.fill(); }
+  // band weights (spring towards the target)
+  for (let i = 0; i < 3; i++) {
+    const appear = Math.min(1, Math.max(0, (now - t0 - born[i]) / 900));
+    const target = (hover < 0 ? 1 : hover === i ? 2.7 : 0.62) * (1 - Math.pow(1 - appear, 3));
+    weight[i] += (target - weight[i]) * 0.12;
+  }
+  const top0 = H * 0.42, avail = H - top0, sum = weight.reduce((a, b) => a + b, 0) || 1;
+  let y = top0 + (3 - Math.min(3, sum)) / 3 * avail * 0;   // stacked from the top of the ground
+  tops = [];
+  const filled = Math.min(1, sum / 3);
+  y = H - avail * filled;
+  for (let i = 0; i < 3; i++) { tops.push(y); y += avail * filled * weight[i] / sum; }
+  tops.push(H);
+  for (let i = 0; i < 3; i++) {
+    const m = M[i], top = tops[i], bot = tops[i + 1], amp = 9 + (hover === i ? 8 : 0);
+    if (bot - top < 1) continue;
+    ctx.save();
+    ctx.beginPath(); ctx.moveTo(0, H);
+    for (let x = 0; x <= W + 8; x += 8) ctx.lineTo(x, top + boundary(i, x, t, amp));
+    ctx.lineTo(W, H); ctx.closePath();
+    const g = ctx.createLinearGradient(0, top, 0, H);
+    g.addColorStop(0, m.color); g.addColorStop(Math.min(1, (bot - top) / (H - top) * 1.1), m.deep); g.addColorStop(1, '#100c0a');
+    ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 28; ctx.shadowOffsetY = -8;   // each layer casts a soft shadow on the one above
+    ctx.fillStyle = g; ctx.fill();
+    ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    ctx.clip();
+    // strata lines inside the layer
+    const lines = Math.max(2, Math.floor((bot - top) / 16));
+    for (let k = 1; k < lines; k++) {
+      const yy = top + k * (bot - top) / lines;
+      ctx.beginPath();
+      for (let x = 0; x <= W + 10; x += 10) ctx.lineTo(x, yy + boundary(i, x, t, amp * (1 - k / lines)) + Math.sin(x * 0.02 + k * 3.1) * 2.2);
+      ctx.strokeStyle = k % 3 === 0 ? 'rgba(0,0,0,.16)' : 'rgba(255,255,255,.07)'; ctx.lineWidth = k % 3 === 0 ? 1.4 : 1; ctx.stroke();
+    }
+    for (const s of specks[i]) { ctx.fillStyle = s.d ? `rgba(0,0,0,${s.a})` : `rgba(255,255,255,${s.a * 0.6})`; ctx.beginPath(); ctx.ellipse(s.u * W, top + 14 + s.v * (bot - top), s.r * 1.6, s.r, s.u * 3, 0, 7); ctx.fill(); }
+    // light catching the top edge
+    ctx.beginPath(); for (let x = 0; x <= W + 8; x += 8) ctx.lineTo(x, top + boundary(i, x, t, amp));
+    ctx.strokeStyle = m.light; ctx.globalAlpha = 0.55; ctx.lineWidth = 2; ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.restore();
+    const L = labels[i];
+    L.style.top = top + 8 + 'px'; L.style.height = (bot - top) + 'px';
+    L.style.opacity = weight[i] > 0.3 ? Math.min(1, (bot - top) / 60) : 0;
+    L.classList.toggle('open', hover === i && bot - top > 200);
+  }
+  // grain over everything
+  ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = 0.16; ctx.fillStyle = grainPat; ctx.save(); ctx.translate((t * 37) % 220, (t * 23) % 220); ctx.fillRect(-220, -220, W + 440, H + 440); ctx.restore();
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+const bandAt = y => { for (let i = 0; i < 3; i++) if (y >= tops[i] - 6 && y < tops[i + 1]) return i; return -1; };
+addEventListener('pointermove', e => { const b = bandAt(e.clientY); hover = b; document.body.style.cursor = b >= 0 ? 'pointer' : ''; });
+addEventListener('pointerleave', () => { hover = -1; });
+addEventListener('click', e => { const b = bandAt(e.clientY); if (b >= 0) SW.choose(M[b].id); });
+SW.keys();
+</script>
+</body>
+</html>

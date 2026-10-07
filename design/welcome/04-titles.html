@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Opening Titles</title>
+<link rel="stylesheet" href="../../css/fonts.css">
+<script src="../../js/core/icons.js"></script>
+<script src="common.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: #f3ead9; font-family: Manrope, sans-serif; }
+  .frame { position: fixed; left: 0; right: 0; top: 11vh; bottom: 11vh; overflow: hidden; background: radial-gradient(ellipse at 40% 50%, #1b1612, #070605 75%); animation: weave .12s steps(2) infinite, flicker 3.2s infinite; }
+  @keyframes weave { 0% { transform: translate(0, 0); } 50% { transform: translate(.4px, -.5px); } }
+  @keyframes flicker { 0%, 100% { filter: brightness(1); } 47% { filter: brightness(1.05); } 48% { filter: brightness(.94); } 49% { filter: brightness(1.03); } }
+  #grain { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .14; mix-blend-mode: screen; pointer-events: none; z-index: 5; }
+  .vig { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 50%, transparent 45%, rgba(0,0,0,.75)); pointer-events: none; z-index: 4; }
+  .bar { position: fixed; left: 0; right: 0; height: 11vh; background: #000; z-index: 10; display: flex; align-items: center; padding: 0 4vw; font: 600 11px 'JetBrains Mono'; letter-spacing: .3em; color: #6d6458; }
+  .bar.top { top: 0; } .bar.bot { bottom: 0; }
+  .bar .grow { flex: 1; }
+  .bar a { color: #b8ab96; cursor: pointer; text-decoration: none; margin-left: 30px; transition: color .2s; }
+  .bar a:hover { color: #fff3dd; }
+  .bar .rec { color: #ff5a4f; }
+  /* intro card */
+  .pre { position: absolute; inset: 0; display: grid; place-items: center; z-index: 3; font: 600 clamp(11px, 1vw, 14px) Manrope; letter-spacing: .7em; color: #c9bba3; opacity: 0; animation: pre 2.4s ease forwards; pointer-events: none; }
+  @keyframes pre { 15% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
+  /* title block */
+  .title { position: absolute; left: 6vw; top: 50%; transform: translateY(-50%); z-index: 3; opacity: 0; animation: in 1.8s 2.1s cubic-bezier(.2,.8,.2,1) forwards; }
+  @keyframes in { from { opacity: 0; filter: blur(10px); transform: translateY(-46%); } to { opacity: 1; filter: none; transform: translateY(-50%); } }
+  .title h1 { margin: 0; font: italic 400 clamp(64px, 9vw, 150px)/.85 'Playfair Display', serif; letter-spacing: -.01em; background: linear-gradient(100deg, #f6e7c8 0%, #fff8e9 40%, #c79a5b 50%, #f6e7c8 62%) 0 0 / 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: sheen 6s 3s ease-in-out infinite; }
+  @keyframes sheen { 0% { background-position: 100% 0; } 60%, 100% { background-position: -100% 0; } }
+  .title .st { font: 600 clamp(12px, 1.05vw, 16px) Manrope; letter-spacing: 1.1em; color: #b9a98e; margin: 18px 0 0 8px; }
+  .title p { margin: 34px 0 0 6px; max-width: 420px; font-size: clamp(13px, 1vw, 15px); line-height: 1.7; color: #9e927f; }
+  .title .credit { margin: 30px 0 0 6px; min-height: 64px; font: 600 11px 'JetBrains Mono'; letter-spacing: .2em; color: #c9bba3; line-height: 2.1; max-width: 460px; }
+  .title .credit em { font-style: normal; color: #6d6458; display: block; letter-spacing: .5em; }
+  /* the three stars */
+  .words { position: absolute; right: 5vw; top: 50%; transform: translateY(-50%); z-index: 3; display: flex; flex-direction: column; align-items: flex-end; }
+  .w { font: 400 clamp(84px, 15.5vh, 170px)/.92 'Bebas Neue', sans-serif; cursor: pointer; opacity: 0; position: relative; animation: word 1.2s cubic-bezier(.2,.8,.2,1) forwards; transition: opacity .5s; }
+  .w .t { display: inline-block; letter-spacing: .02em; color: transparent; -webkit-text-stroke: 1.5px rgba(243,234,217,.55); transition: -webkit-text-stroke-color .4s, letter-spacing .6s cubic-bezier(.2,1,.3,1); }
+  .w:nth-child(1) { animation-delay: 2.9s; } .w:nth-child(2) { animation-delay: 3.15s; } .w:nth-child(3) { animation-delay: 3.4s; }
+  @keyframes word { from { opacity: 0; transform: translateX(60px); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+  .w .n { position: absolute; left: -54px; top: 18%; font: 600 12px 'JetBrains Mono'; letter-spacing: .2em; color: #6d6458; }
+  .words:hover .w { opacity: .18 !important; }
+  .words .w:hover { opacity: 1 !important; }
+  .w:hover .t { -webkit-text-stroke-color: transparent; letter-spacing: .06em; background-size: 220% 220%; -webkit-background-clip: text; background-clip: text; animation: footage 6s linear infinite; }
+  .w.video:hover .t { background-image: radial-gradient(circle at 30% 40%, #fff2c8 0 6%, transparent 30%), radial-gradient(circle at 80% 60%, #ff4d2e 0 10%, transparent 45%), linear-gradient(120deg, #ff9a3c, #b4301d 40%, #ffd28a 60%, #7a1d10); }
+  .w.audio:hover .t { background-image: repeating-linear-gradient(90deg, #35d6b4 0 6px, #0d6b5a 6px 9px, #9df6e2 9px 12px, #0b4d42 12px 18px), linear-gradient(#bff8ea, #0f8a72); background-blend-mode: overlay; }
+  .w.image:hover .t { background-image: radial-gradient(circle at 20% 30%, #ffd1f0 0 8%, transparent 22%), radial-gradient(circle at 70% 70%, #fff 0 4%, transparent 18%), radial-gradient(circle at 50% 50%, #a08aff 0 20%, transparent 60%), linear-gradient(140deg, #3b1d8f, #c27bff 45%, #ff9bd2 70%, #5b3fd6); }
+  @keyframes footage { 0% { background-position: 0% 50%; } 50% { background-position: 100% 30%; } 100% { background-position: 0% 50%; } }
+  .skip { position: fixed; z-index: 11; right: 4vw; top: 50%; }
+</style>
+</head>
+<body>
+<div class="bar top"><span class="rec">● REC</span>&nbsp;&nbsp;&nbsp;<span id="tc">00:00:00:00</span><span class="grow"></span><span>REEL 1 · SCENE 1 · TAKE 1</span><span class="grow"></span><span>2.39 : 1</span></div>
+<div class="frame">
+  <canvas id="grain"></canvas><div class="vig"></div>
+  <div class="pre">A STRATA STUDIO PRODUCTION</div>
+  <div class="title">
+    <h1>Strata</h1><div class="st">STUDIO</div>
+    <p id="tag"></p>
+    <div class="credit" id="credit"><em>STARRING</em>VIDEO · AUDIO · IMAGE</div>
+  </div>
+  <div class="words" id="words"></div>
+</div>
+<div class="bar bot"><span>PRESS 1 · 2 · 3</span><span class="grow"></span><span id="acts"></span></div>
+<script>
+document.getElementById('tag').textContent = SW.tagline;
+document.getElementById('acts').innerHTML = SW.actions.map(([, l, k]) => `<a>${l.replace('…', '').toUpperCase()}${k ? ` (${k})` : ''}</a>`).join('');
+const words = document.getElementById('words'), credit = document.getElementById('credit');
+SW.modes.forEach((m, i) => {
+  const w = document.createElement('div'); w.className = 'w ' + m.id; w.innerHTML = `<span class="n">0${i + 1}</span><span class="t">${m.name.toUpperCase()}</span>`;
+  w.onmouseenter = () => { credit.innerHTML = `<em>FEATURING</em>${m.pts.map(p => p.toUpperCase()).join(' · ')}`; };
+  w.onmouseleave = () => { credit.innerHTML = `<em>STARRING</em>VIDEO · AUDIO · IMAGE`; };
+  w.onclick = () => SW.choose(m.id);
+  words.append(w);
+});
+// film grain at 24 fps + running timecode
+const g = document.getElementById('grain'), gx = g.getContext('2d');
+let f = 0;
+const resize = () => { g.width = Math.ceil(innerWidth / 2); g.height = Math.ceil(innerHeight / 2); };
+addEventListener('resize', resize); resize();
+setInterval(() => {
+  const id = gx.createImageData(g.width, g.height), d = id.data;
+  for (let i = 0; i < d.length; i += 4) { const v = Math.random() < 0.5 ? Math.random() * 255 : 0; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; }
+  // the odd dust speck and scratch
+  gx.putImageData(id, 0, 0);
+  if (Math.random() < 0.3) { gx.fillStyle = 'rgba(255,255,255,.9)'; gx.beginPath(); gx.arc(Math.random() * g.width, Math.random() * g.height, 1 + Math.random() * 2, 0, 7); gx.fill(); }
+  if (Math.random() < 0.12) { gx.fillStyle = 'rgba(255,255,255,.6)'; gx.fillRect(Math.random() * g.width, 0, 1, g.height); }
+  f++; const s = Math.floor(f / 24);
+  document.getElementById('tc').textContent = `00:00:${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}:${String(f % 24).padStart(2, '0')}`.replace(/^00:00:/, '00:');
+}, 1000 / 24);
+SW.keys();
+</script>
+</body>
+</html>

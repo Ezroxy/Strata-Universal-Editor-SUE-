@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Welcome Screen Concepts</title>
+<link rel="stylesheet" href="../../css/fonts.css">
+<style>
+  :root { --bg: #0b0b0e; --bar: rgba(16,16,20,.86); --text: #f2efe9; --muted: #8b8a93; --line: rgba(255,255,255,.1); --accent: #ffb84d; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: Manrope, system-ui, sans-serif; overflow: hidden; }
+  iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #000; }
+  .bar { position: fixed; z-index: 10; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 999px; background: var(--bar); border: 1px solid var(--line); backdrop-filter: blur(14px); box-shadow: 0 10px 40px rgba(0,0,0,.5); transition: opacity .3s, transform .3s; }
+  .bar.hide { opacity: 0; transform: translateX(-50%) translateY(30px); pointer-events: none; }
+  .bar button { height: 34px; min-width: 34px; border-radius: 999px; border: 0; background: transparent; color: var(--text); font: 700 13px Manrope; cursor: pointer; display: grid; place-items: center; padding: 0 10px; }
+  .bar button:hover { background: rgba(255,255,255,.08); }
+  .name { display: flex; align-items: baseline; gap: 10px; padding: 0 10px; min-width: 260px; justify-content: center; }
+  .name b { font: 800 10.5px 'JetBrains Mono'; color: var(--accent); letter-spacing: .06em; }
+  .name span { font-weight: 800; font-size: 14px; white-space: nowrap; }
+  .name em { font-style: normal; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .dots { display: flex; gap: 5px; padding: 0 8px; }
+  .dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.22); cursor: pointer; transition: background .2s, transform .2s; }
+  .dots i.on { background: var(--accent); transform: scale(1.3); }
+  .overview { position: fixed; inset: 0; z-index: 20; background: rgba(8,8,10,.94); backdrop-filter: blur(10px); display: none; overflow: auto; padding: 48px clamp(20px, 6vw, 90px); }
+  .overview.on { display: block; }
+  .overview h1 { font: 800 30px Manrope; margin: 0 0 4px; letter-spacing: -.02em; }
+  .overview p.lead { color: var(--muted); margin: 0 0 26px; max-width: 720px; line-height: 1.6; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+  .card { border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; cursor: pointer; background: rgba(255,255,255,.03); transition: border-color .2s, transform .2s, background .2s; }
+  .card:hover { border-color: var(--accent); transform: translateY(-2px); background: rgba(255,255,255,.05); }
+  .card b { font: 800 11px 'JetBrains Mono'; color: var(--accent); }
+  .card h3 { margin: 6px 0 6px; font-size: 18px; }
+  .card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+  .hint { position: fixed; z-index: 10; right: 16px; top: 14px; font: 600 11px 'JetBrains Mono'; color: rgba(255,255,255,.45); background: rgba(0,0,0,.35); padding: 5px 9px; border-radius: 8px; pointer-events: none; }
+</style>
+</head>
+<body>
+<iframe id="frame" title="Concept"></iframe>
+<div class="hint" id="hint">← → to flip · O for overview · H hides this bar · 1 / 2 / 3 picks an editor</div>
+<div class="bar" id="bar">
+  <button id="prev" title="Previous concept">‹</button>
+  <div class="name"><b id="num">01</b><span id="nm"></span><em id="sub"></em></div>
+  <button id="next" title="Next concept">›</button>
+  <div class="dots" id="dots"></div>
+  <button id="ov" title="Overview">Overview</button>
+</div>
+<div class="overview" id="overview">
+  <h1>Strata Studio — welcome screen concepts</h1>
+  <p class="lead">Ten directions for the screen you see when the app opens. Each one is live — hover, click and use the keyboard. Pick a favourite (or a mix of two) and we'll refine it and build it into the app.</p>
+  <div class="grid" id="grid"></div>
+</div>
+<script>
+const C = [
+  ['01-strata.html', 'Strata', 'Sediment', 'The logo becomes three living layers of rock — hover a stratum and it swells open to reveal its editor.'],
+  ['02-lighttable.html', 'Light Table', 'Tactile objects', 'A glowing photographer’s light table with a film strip, a cassette tape and a Polaroid you can pick up.'],
+  ['03-oscilloscope.html', 'Oscilloscope', 'Signal', 'A phosphor CRT draws the name with its beam; each channel knob changes the signal it traces.'],
+  ['04-titles.html', 'Opening Titles', 'Cinematic', 'Letterboxed film grain and giant kinetic type — the editors are the stars in the credits.'],
+  ['05-lava.html', 'Lava Lamp', 'Organic', 'Three gooey blobs that merge, split and wobble — the one you touch grows and takes over.'],
+  ['06-bento.html', 'Bento', 'Live previews', 'A calm dashboard of tiles with real animated previews of each editor at work.'],
+  ['07-isometric.html', 'Isometric Stack', '3D', 'The logo extruded into three 3D slabs — pull one out like a drawer.'],
+  ['08-terminal.html', 'Boot Sequence', 'Keyboard-first', 'A crisp terminal boots the engines and asks what you want to make.'],
+  ['09-orbit.html', 'Orbit', 'Generative', 'A starfield where the three editors orbit the logo as planets.'],
+  ['10-collage.html', 'Zine Collage', 'Handmade', 'Cut-out paper, tape and ransom-note lettering made from the GTA & L.A. Noire fonts.'],
+];
+const frame = document.getElementById('frame'), dots = document.getElementById('dots'), grid = document.getElementById('grid');
+let cur = Math.max(0, Math.min(C.length - 1, (parseInt(location.hash.slice(1)) || 1) - 1));
+C.forEach((c, i) => {
+  const d = document.createElement('i'); d.title = c[1]; d.onclick = () => go(i); dots.append(d);
+  const card = document.createElement('div'); card.className = 'card';
+  card.innerHTML = `<b>${String(i + 1).padStart(2, '0')} · ${c[2]}</b><h3>${c[1]}</h3><p>${c[3]}</p>`;
+  card.onclick = () => { go(i); overview(false); };
+  grid.append(card);
+});
+function go(i) {
+  cur = (i + C.length) % C.length;
+  frame.src = C[cur][0];
+  document.getElementById('num').textContent = String(cur + 1).padStart(2, '0');
+  document.getElementById('nm').textContent = C[cur][1];
+  document.getElementById('sub').textContent = C[cur][2];
+  [...dots.children].forEach((d, k) => d.classList.toggle('on', k === cur));
+  history.replaceState(null, '', '#' + (cur + 1));
+}
+const overview = on => document.getElementById('overview').classList.toggle('on', on);
+document.getElementById('prev').onclick = () => go(cur - 1);
+document.getElementById('next').onclick = () => go(cur + 1);
+document.getElementById('ov').onclick = () => overview(true);
+const key = e => {
+  if (e.key === 'ArrowRight') go(cur + 1);
+  else if (e.key === 'ArrowLeft') go(cur - 1);
+  else if (e.key === 'o' || e.key === 'O') overview(!document.getElementById('overview').classList.contains('on'));
+  else if (e.key === 'Escape') overview(false);
+  else if (e.key === 'h' || e.key === 'H') { document.getElementById('bar').classList.toggle('hide'); document.getElementById('hint').style.display = document.getElementById('bar').classList.contains('hide') ? 'none' : ''; }
+};
+addEventListener('keydown', key);
+// forward the gallery keys from inside the concept frame too
+frame.addEventListener('load', () => { try { frame.contentWindow.addEventListener('keydown', e => { if (['ArrowRight', 'ArrowLeft', 'o', 'O', 'h', 'H'].includes(e.key) && !frame.contentWindow.__ownArrows) key(e); }); frame.contentWindow.focus(); } catch {} });
+addEventListener('hashchange', () => { const n = parseInt(location.hash.slice(1)) - 1; if (n >= 0 && n !== cur) go(n); });
+go(cur);
+</script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Isometric Stack</title>
+<link rel="stylesheet" href="../../css/fonts.css">
+<script src="../../js/core/icons.js"></script>
+<script src="common.js"></script>
+<style>
+  @property --drop { syntax: '<length>'; inherits: false; initial-value: 0px; }
+  @property --pull { syntax: '<length>'; inherits: false; initial-value: 0px; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: Manrope, sans-serif; color: #2a2238; background: linear-gradient(160deg, #fde9dc 0%, #f1e4f4 55%, #e2ebf8 100%); }
+  .stage { position: fixed; inset: 0; perspective: 2600px; perspective-origin: 60% 40%; }
+  .world { position: absolute; left: 61%; top: 57%; width: 0; height: 0; transform-style: preserve-3d; transform: rotateX(var(--rx, 58deg)) rotateZ(var(--rz, -45deg)); }
+  .floor { position: absolute; left: -900px; top: -900px; width: 1800px; height: 1800px; transform: translateZ(-1px); background-image: linear-gradient(rgba(80,60,120,.13) 1px, transparent 1px), linear-gradient(90deg, rgba(80,60,120,.13) 1px, transparent 1px); background-size: 50px 50px; -webkit-mask-image: radial-gradient(circle, #000 18%, transparent 58%); mask-image: radial-gradient(circle, #000 18%, transparent 58%); }
+  .shadow { position: absolute; left: -290px; top: -70px; width: 580px; height: 250px; background: rgba(70,40,110,.28); filter: blur(30px); border-radius: 40px; transform: translate3d(30px, 40px, 0); }
+  /* a slab = one bar of the logo, as a real box */
+  .slab { --W: 470px; --D: 172px; --H: 64px; position: absolute; width: var(--W); height: var(--D); transform-style: preserve-3d; cursor: pointer;
+    transform: translate3d(calc(var(--x) - var(--W) / 2), calc(var(--D) / -2 + var(--pull)), calc(var(--z) + var(--drop)));
+    transition: --pull .55s cubic-bezier(.2,1.3,.35,1); animation: drop 1.1s cubic-bezier(.3,1.35,.5,1) both; }
+  @keyframes drop { from { --drop: 520px; } to { --drop: 0px; } }
+  .slab.video { --c: #ff7849; --d: #c2410c; --l: #ffc2a3; --z: 172px; --x: -60px; animation-delay: .5s; }
+  .slab.audio { --c: #35d6b4; --d: #0f8a72; --l: #b5f3e6; --z: 86px; --x: 0px; animation-delay: .3s; }
+  .slab.image { --c: #a08aff; --d: #5b3fd6; --l: #d9d0ff; --z: 0px; --x: 60px; animation-delay: .1s; }
+  .slab.on { --pull: 170px; }
+  .world.hov .slab:not(.on) .f { filter: saturate(.5) brightness(1.05); }
+  .f { transition: filter .35s; }
+  .f { position: absolute; left: 0; top: 0; transform-origin: 0 0; backface-visibility: hidden; }
+  .f.top { width: var(--W); height: var(--D); border-radius: 18px; transform: translateZ(var(--H)); background: linear-gradient(135deg, color-mix(in srgb, var(--l) 70%, #fff), var(--l) 45%, color-mix(in srgb, var(--c) 60%, var(--l))); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.55); display: flex; align-items: center; padding: 0 26px; gap: 16px; }
+  .f.front { width: var(--W); height: var(--H); transform: translate3d(0, var(--D), var(--H)) rotateX(-90deg); background: linear-gradient(180deg, var(--c), color-mix(in srgb, var(--c) 78%, var(--d))); border-radius: 0 0 14px 14px; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; }
+  .f.end { width: var(--H); height: var(--D); transform: rotateY(-90deg); background: linear-gradient(90deg, color-mix(in srgb, var(--d) 75%, #000), var(--d)); border-radius: 0 0 14px 0; }
+  .f.front b { font: 400 40px/1 'Bebas Neue'; letter-spacing: .14em; color: rgba(255,255,255,.95); text-shadow: 0 -1px 0 rgba(0,0,0,.18); }
+  .f.front span { font: 700 11px 'JetBrains Mono'; color: rgba(0,0,0,.35); letter-spacing: .1em; }
+  .f.top .ic { width: 64px; height: 64px; border-radius: 18px; display: grid; place-items: center; background: rgba(255,255,255,.6); color: var(--d); box-shadow: 0 6px 0 color-mix(in srgb, var(--d) 30%, transparent); }
+  .f.top .ln { flex: 1; display: grid; gap: 9px; }
+  .f.top .ln i { display: block; height: 9px; border-radius: 5px; background: color-mix(in srgb, var(--d) 28%, transparent); }
+  .f.top .ln i:nth-child(2) { width: 72%; } .f.top .ln i:nth-child(3) { width: 48%; }
+  .f.top kbd { font: 800 18px 'JetBrains Mono'; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; background: rgba(255,255,255,.7); color: var(--d); box-shadow: 0 4px 0 color-mix(in srgb, var(--d) 35%, transparent); }
+  /* little floating cubes */
+  .cube { position: absolute; width: 22px; height: 22px; transform-style: preserve-3d; animation: bob 4s ease-in-out infinite; }
+  .cube .f.top { width: 22px; height: 22px; border-radius: 4px; transform: translateZ(22px); padding: 0; box-shadow: none; }
+  .cube .f.front { width: 22px; height: 22px; transform: translate3d(0, 22px, 22px) rotateX(-90deg); padding: 0; border-radius: 0 0 4px 4px; }
+  .cube .f.end { width: 22px; height: 22px; transform: rotateY(-90deg); border-radius: 0; }
+  @keyframes bob { 0%, 100% { transform: translate3d(var(--cx), var(--cy), var(--cz)); } 50% { transform: translate3d(var(--cx), var(--cy), calc(var(--cz) + 34px)) rotateZ(25deg); } }
+  /* 2D text */
+  .title { position: fixed; left: 6vw; top: 10vh; z-index: 2; }
+  .title .eyebrow { font: 700 11px 'JetBrains Mono'; letter-spacing: .3em; color: #8a7aa6; }
+  .title h1 { margin: 14px 0 0; font: 800 clamp(56px, 6.4vw, 104px)/.88 Manrope; letter-spacing: -.055em; }
+  .title h1 span { display: block; color: transparent; -webkit-text-stroke: 1.6px #2a2238; }
+  .title p { margin: 22px 0 0; max-width: 360px; font-size: 15px; line-height: 1.6; color: #5d5370; }
+  .card { position: fixed; left: 6vw; bottom: 12vh; z-index: 2; width: 340px; padding: 20px 22px; border-radius: 20px; background: rgba(255,255,255,.62); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,.8); box-shadow: 0 20px 50px -20px rgba(70,40,110,.35); transition: transform .4s cubic-bezier(.2,1.3,.4,1); }
+  .card .k { font: 700 11px 'JetBrains Mono'; letter-spacing: .15em; color: var(--cd, #8a7aa6); }
+  .card h2 { margin: 6px 0 4px; font: 800 26px Manrope; letter-spacing: -.03em; }
+  .card p { margin: 0; font-size: 13.5px; line-height: 1.55; color: #5d5370; }
+  .card ul { margin: 12px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+  .card li { font: 650 12.5px Manrope; display: flex; align-items: center; gap: 8px; }
+  .card li::before { content: ''; width: 7px; height: 7px; border-radius: 2px; background: var(--cc, #a08aff); transform: rotate(45deg); }
+  .card.bump { animation: bump .4s cubic-bezier(.2,1.5,.4,1); }
+  @keyframes bump { 0% { transform: translateY(6px) scale(.98); } }
+  .acts { position: fixed; right: 4vw; top: 6vh; z-index: 2; display: flex; gap: 8px; }
+  .acts button { display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,.9); background: rgba(255,255,255,.55); color: #2a2238; font: 700 12.5px Manrope; cursor: pointer; box-shadow: 0 3px 0 rgba(70,40,110,.12); transition: transform .2s, box-shadow .2s; }
+  .acts button:hover { transform: translateY(-2px); box-shadow: 0 5px 0 rgba(70,40,110,.14); }
+  .acts kbd { font: 600 10px 'JetBrains Mono'; opacity: .55; }
+</style>
+</head>
+<body>
+<div class="stage"><div class="world" id="world"><div class="floor"></div><div class="shadow"></div></div></div>
+<div class="title"><div class="eyebrow">VIDEO · AUDIO · IMAGE</div><h1>Strata<span>Studio</span></h1><p id="tag"></p></div>
+<div class="card" id="card"></div>
+<div class="acts" id="acts"></div>
+<script>
+const world = document.getElementById('world'), card = document.getElementById('card');
+document.getElementById('tag').textContent = SW.tagline;
+document.getElementById('acts').innerHTML = SW.actions.map(([ic, l, k]) => `<button>${SW.icon(ic, 15)}${l}${k ? `<kbd>${k}</kbd>` : ''}</button>`).join('');
+const idle = () => { card.style.cssText = ''; card.innerHTML = `<div class="k">THREE LAYERS, ONE STUDIO</div><h2>Pull out a layer</h2><p>Point at a slab to slide it out, then click — or press 1, 2 or 3.</p>`; };
+const slabs = SW.modes.map((m, i) => {
+  const s = document.createElement('div'); s.className = 'slab ' + m.id;
+  s.innerHTML = `<div class="f end"></div><div class="f front"><b>${m.name}</b><span>0${i + 1} / 03</span></div><div class="f top"><div class="ic">${SW.icon(m.icon, 30, 2)}</div><div class="ln"><i></i><i></i><i></i></div><kbd>${m.key}</kbd></div>`;
+  const on = () => {
+    slabs.forEach(o => o.classList.toggle('on', o === s)); world.classList.add('hov');
+    card.style.cssText = `--cd:${m.deep};--cc:${m.color}`;
+    card.innerHTML = `<div class="k">LAYER 0${i + 1} · PRESS ${m.key}</div><h2>${m.name} editor</h2><p>${m.desc}</p><ul>${m.pts.map(p => `<li>${p}</li>`).join('')}</ul>`;
+    card.classList.remove('bump'); void card.offsetWidth; card.classList.add('bump');
+  };
+  s.addEventListener('pointerenter', on);
+  s.addEventListener('pointerleave', () => { s.classList.remove('on'); if (!slabs.some(o => o.classList.contains('on'))) { world.classList.remove('hov'); idle(); } });
+  s.addEventListener('click', () => SW.choose(m.id));
+  world.append(s); return s;
+});
+// floating cubes drifting around the stack
+[['#ff7849', '#c2410c', '#ffc2a3', -330, -200, 120, 0], ['#35d6b4', '#0f8a72', '#b5f3e6', 300, -170, 230, 1.2], ['#a08aff', '#5b3fd6', '#d9d0ff', 260, 210, 40, 2.1], ['#ffd36b', '#c9921a', '#fff0c2', -470, 40, 280, .6], ['#ff9ec7', '#c2457a', '#ffd9ea', 40, -320, 320, 1.8]].forEach(([c, d, l, x, y, z, dl]) => {
+  const q = document.createElement('div'); q.className = 'cube';
+  q.style.cssText = `--c:${c};--d:${d};--l:${l};--cx:${x}px;--cy:${y}px;--cz:${z}px;animation-delay:-${dl}s`;
+  q.innerHTML = '<div class="f end"></div><div class="f front"></div><div class="f top"></div>';
+  world.append(q);
+});
+idle();
+// a gentle orbit that follows the mouse
+let rx = 58, rz = -45, tx = 58, tz = -45;
+addEventListener('pointermove', e => { tz = -45 + (e.clientX / innerWidth - 0.5) * 14; tx = 58 - (e.clientY / innerHeight - 0.5) * 8; });
+(function loop() { rx += (tx - rx) * 0.06; rz += (tz - rz) * 0.06; world.style.setProperty('--rx', rx + 'deg'); world.style.setProperty('--rz', rz + 'deg'); requestAnimationFrame(loop); })();
+// keyboard: arrows (up/down) step through the layers too
+let k = -1;
+SW.keys(e => {
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { k = (k + (e.key === 'ArrowDown' ? 1 : -1) + 3) % 3; slabs[k].dispatchEvent(new Event('pointerenter')); e.preventDefault(); }
+  if (e.key === 'Enter' && k >= 0) SW.choose(SW.modes[k].id);
+});
+</script>
+</body>
+</html>

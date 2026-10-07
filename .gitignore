@@ -1,0 +1,60 @@
+# ---- dependencies ----
+node_modules/
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# ---- build output ----
+dist/
+desktop/target/
+*.exe
+*.pdb
+
+# ---- secrets ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+secrets.*
+*secret*.json
+credentials*.json
+.npmrc
+
+# ---- large media / test files ----
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.webm
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.m4a
+*.aac
+*.psd
+*.zip
+*.7z
+*.rar
+test-media/
+samples/
+*.strata
+
+# ---- copyrighted game fonts (Rockstar, "personal use only") ----
+# Regenerate locally with: node tools/fonts/build-game-fonts.mjs <gtaFolder> <laNoireFolder>
+fonts/game/
+
+# ---- local tooling / OS junk ----
+.claude/settings.local.json
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/

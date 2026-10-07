@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lava Lamp</title>
+<link rel="stylesheet" href="../../css/fonts.css">
+<script src="../../js/core/icons.js"></script>
+<script src="common.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: Manrope, sans-serif; color: #fff; background: radial-gradient(ellipse at 30% 20%, #2b1846, #120a22 55%, #07040f); }
+  .goo { position: fixed; inset: 0; filter: url(#gooey); }
+  .blob { position: absolute; left: 0; top: 0; border-radius: 50%; will-change: transform; }
+  .glow { position: fixed; inset: 0; pointer-events: none; filter: blur(70px); opacity: .55; }
+  .glow i { position: absolute; border-radius: 50%; }
+  .lab { position: fixed; left: 0; top: 0; z-index: 3; width: 300px; margin: -40px 0 0 -150px; text-align: center; pointer-events: none; transition: opacity .3s; }
+  .lab { text-shadow: 0 1px 2px rgba(0,0,0,.25), 0 4px 18px rgba(0,0,0,.3); }
+  .lab b { display: block; font: 800 clamp(30px, 2.8vw, 44px) Manrope; letter-spacing: -.02em; }
+  .lab span { display: block; font: 700 12.5px Manrope; opacity: .85; margin-top: 4px; }
+  .lab ul { list-style: none; margin: 12px 0 0; padding: 0; font: 650 12px Manrope; line-height: 1.75; opacity: 0; transform: translateY(8px); transition: opacity .3s, transform .4s cubic-bezier(.2,1.3,.4,1); }
+  .lab.on ul { opacity: .95; transform: none; }
+  header { position: fixed; left: 50%; top: 6vh; transform: translateX(-50%); z-index: 4; text-align: center; padding: 22px 40px 24px; border-radius: 30px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); backdrop-filter: blur(18px) saturate(1.4); box-shadow: 0 20px 60px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.18); }
+  header .row { display: flex; align-items: center; justify-content: center; gap: 14px; }
+  h1 { margin: 0; font: 800 clamp(34px, 3.4vw, 54px)/1 Manrope; letter-spacing: -.035em; }
+  header p { margin: 10px 0 0; font-size: 14px; color: rgba(255,255,255,.72); }
+  .acts { position: fixed; left: 50%; bottom: 9vh; transform: translateX(-50%); z-index: 4; display: flex; gap: 10px; }
+  .acts button { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.08); color: #fff; font: 700 13px Manrope; backdrop-filter: blur(12px); cursor: pointer; transition: background .2s, transform .3s cubic-bezier(.2,1.5,.4,1); }
+  .acts button:hover { background: rgba(255,255,255,.16); transform: translateY(-2px) scale(1.03); }
+  .acts kbd { font: 600 10px 'JetBrains Mono'; opacity: .6; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><filter id="gooey"><feGaussianBlur in="SourceGraphic" stdDeviation="16" result="b"/><feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -11" result="g"/><feComposite in="SourceGraphic" in2="g" operator="atop"/></filter></svg>
+<div class="glow" id="glow"></div>
+<div class="goo" id="goo"></div>
+<div id="labs"></div>
+<header><div class="row" id="logo"></div><p id="tag"></p></header>
+<div class="acts" id="acts"></div>
+<script>
+document.getElementById('logo').innerHTML = SW.logo(46) + '<h1>Strata Studio</h1>';
+document.getElementById('tag').textContent = SW.tagline;
+document.getElementById('acts').innerHTML = SW.actions.map(([ic, l, k]) => `<button>${SW.icon(ic, 15)}${l}${k ? `<kbd>${k}</kbd>` : ''}</button>`).join('');
+const goo = document.getElementById('goo'), glow = document.getElementById('glow'), labs = document.getElementById('labs');
+const M = SW.modes;
+const grad = m => `radial-gradient(circle at 35% 30%, ${m.light} 0, ${m.color} 38%, ${m.deep})`;
+const mk = (size, bg) => { const b = document.createElement('div'); b.className = 'blob'; b.style.width = b.style.height = size + 'px'; b.style.background = bg; goo.append(b); return b; };
+const big = M.map(m => ({ m, el: mk(260, `radial-gradient(circle at 35% 30%, ${m.color}, ${m.deep})`), r: 130, s: 1, ts: 1, x: 0, y: 0 }));
+const drops = [];
+M.forEach((m, i) => { for (let k = 0; k < 5; k++) drops.push({ el: mk(30 + Math.random() * 46, grad(m)), i, ph: Math.random() * 7, sp: 0.25 + Math.random() * 0.35, orb: 150 + Math.random() * 120, r: 0 }); });
+const IDLE = { light: '#f4f1ff', color: '#c9bfff', deep: '#8f7fe0' };
+const cursor = { el: mk(56, grad(IDLE)), x: -200, y: -200, tx: -200, ty: -200 };
+const glows = M.map(m => { const g = document.createElement('i'); g.style.background = m.color; g.style.width = g.style.height = '420px'; glow.append(g); return g; });
+const lab = M.map(m => { const l = document.createElement('div'); l.className = 'lab'; l.innerHTML = `<b>${m.name}</b><span>${m.desc}</span><ul>${m.pts.map(p => `<li>${p}</li>`).join('')}</ul>`; labs.append(l); return l; });
+drops.forEach(d => d.r = parseFloat(d.el.style.width) / 2);
+let hover = -1, t = 0, last = performance.now();
+function home(i, W, H) { return [W * (0.22 + i * 0.28), H * (0.6 + (i === 1 ? 0.06 : -0.02))]; }
+function tick(now) {
+  const dt = Math.min(0.1, (now - last) / 1000 || 1 / 60); last = now; t += dt;
+  const k = 1 - Math.pow(1 - 0.06, dt * 60), ks = 1 - Math.pow(1 - 0.08, dt * 60);
+  const W = innerWidth, H = innerHeight;
+  const h = cursor.tx < -100 ? -1 : pick(cursor.tx, cursor.ty);
+  if (h !== hover) { hover = h; document.body.style.cursor = hover >= 0 ? 'pointer' : ''; cursor.el.style.background = grad(hover >= 0 ? M[hover] : IDLE); }
+  big.forEach((b, i) => {
+    const [hx, hy] = home(i, W, H);
+    b.ts = hover < 0 ? 1 : hover === i ? 1.45 : 0.78;
+    b.s += (b.ts - b.s) * ks;
+    // gentle lava-lamp drift; the others back away from the one you're touching
+    let x = hx + Math.sin(t * 0.5 + i * 2) * 26, y = hy + Math.cos(t * 0.42 + i) * 34;
+    if (hover >= 0 && hover !== i) { x += (i < hover ? -1 : 1) * 70; }
+    b.x += (x - b.x) * k; b.y += (y - b.y) * k;
+    const wob = 1 + Math.sin(t * 2.2 + i) * 0.035;
+    b.el.style.transform = `translate(${b.x - b.r}px, ${b.y - b.r}px) scale(${b.s * wob}, ${b.s / wob})`;
+    glows[i].style.transform = `translate(${b.x - 210}px, ${b.y - 210}px) scale(${b.s})`;
+    lab[i].style.transform = `translate(${b.x}px, ${b.y + (hover === i ? -30 : 0)}px)`;
+    lab[i].classList.toggle('on', hover === i);
+    lab[i].style.opacity = hover < 0 || hover === i ? 1 : 0.35;
+  });
+  drops.forEach(d => {
+    const b = big[d.i];
+    const a = t * d.sp + d.ph, orb = d.orb * (0.55 + 0.45 * Math.sin(t * 0.3 + d.ph)) * b.s;
+    const x = b.x + Math.cos(a) * orb, y = b.y + Math.sin(a * 1.3) * orb * 0.7 - Math.abs(Math.sin(a * 0.5)) * 40;
+    d.el.style.transform = `translate(${x - d.r}px, ${y - d.r}px)`;
+  });
+  cursor.x += (cursor.tx - cursor.x) * 0.18; cursor.y += (cursor.ty - cursor.y) * 0.18;
+  cursor.el.style.transform = `translate(${cursor.x - 28}px, ${cursor.y - 28}px)`;
+  requestAnimationFrame(tick);
+}
+big.forEach((b, i) => { const [x, y] = home(i, innerWidth, innerHeight); b.x = x; b.y = y + 300; });
+requestAnimationFrame(tick);
+const pick = (x, y) => { let best = -1, bd = 1e9; big.forEach((b, i) => { const d = Math.hypot(x - b.x, y - b.y); if (d < b.r * b.s * 1.1 && d < bd) { bd = d; best = i; } }); return best; };
+addEventListener('pointermove', e => { cursor.tx = e.clientX; cursor.ty = e.clientY; });
+document.documentElement.addEventListener('pointerleave', () => { cursor.tx = cursor.ty = -200; });
+addEventListener('click', e => { const i = pick(e.clientX, e.clientY); if (i >= 0) SW.choose(M[i].id); });
+SW.keys();
+</script>
+</body>
+</html>

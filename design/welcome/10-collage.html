@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zine Collage</title>
+<link rel="stylesheet" href="../../css/fonts.css">
+<link rel="stylesheet" href="../../css/gamefonts.css">
+<script src="../../js/core/icons.js"></script>
+<script src="common.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; color: #1d1a16; font-family: Manrope, sans-serif; }
+  body { background: #c8a477; }
+  /* kraft-paper fibres + vignette */
+  body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .32  0 0 0 0 .22  0 0 0 0 .12  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"), radial-gradient(ellipse at 50% 45%, transparent 40%, rgba(70,40,10,.42)); }
+  .paper { position: absolute; }
+  .shadow { filter: drop-shadow(0 2px 1px rgba(60,30,0,.25)) drop-shadow(0 12px 16px rgba(60,30,0,.22)); }
+  /* ransom-note title */
+  .ransom { position: absolute; left: 5vw; top: 6vh; z-index: 5; }
+  .ransom .w { display: flex; align-items: flex-end; gap: 4px; margin-bottom: 10px; }
+  .ransom span { display: inline-block; line-height: 1; padding: .08em .14em .02em; transform: rotate(var(--r)) translateY(var(--y)); transition: transform .3s cubic-bezier(.2,1.8,.4,1); filter: drop-shadow(0 2px 2px rgba(60,30,0,.3)); }
+  .ransom span:hover { transform: rotate(calc(var(--r) * -1.6)) translateY(-6px) scale(1.12); }
+  .strip { position: absolute; left: 5.4vw; top: calc(6vh + 220px); z-index: 4; max-width: 540px; padding: 16px 26px 18px; background: #f6f1e4; font: 400 16.5px/1.5 'L.A. Noire Typewriter', 'Courier New', monospace; color: #2b2620; transform: rotate(-1.4deg); }
+  /* handwritten scrap that explains things */
+  .note { position: absolute; left: 6vw; top: calc(6vh + 340px); z-index: 4; width: 430px; height: 240px; padding: 30px 26px 18px 54px; transform: rotate(-2.2deg); background: #fffdf6 repeating-linear-gradient(transparent 0 31px, rgba(80,120,200,.32) 31px 32px) 0 12px; font: 400 24px/32px 'L.A. Noire Notebook', 'Permanent Marker', cursive; color: #25304f; }
+  .note::before { content: ''; position: absolute; left: 38px; top: 0; bottom: 0; width: 1.5px; background: rgba(220,70,70,.5); }
+  .note::after { content: ''; position: absolute; left: 12px; top: 22px; bottom: 22px; width: 12px; background: radial-gradient(circle, #c8a477 5px, transparent 5.5px) 0 0 / 12px 44px; }
+  .note .l { display: block; white-space: nowrap; clip-path: inset(0 100% 0 0); animation: write .55s steps(18) forwards; }
+  @keyframes write { to { clip-path: inset(0 -5% 0 0); } }
+  .note .hl { background: linear-gradient(transparent 55%, var(--hl, #ffe873) 55% 90%, transparent 90%); padding: 0 4px; }
+  .note .big { font-size: 34px; }
+  /* sticky-note actions */
+  .stickies { position: absolute; left: 5vw; bottom: 4vh; z-index: 6; display: flex; gap: 18px; }
+  .sticky { width: 132px; height: 92px; padding: 12px 12px; font: 400 19px/1.15 'L.A. Noire Notebook', 'Permanent Marker', cursive; color: #2a2a2a; cursor: pointer; transform: rotate(var(--r)); transition: transform .3s cubic-bezier(.2,1.6,.4,1); box-shadow: 0 10px 14px -8px rgba(60,30,0,.45); }
+  .sticky:hover { transform: rotate(0deg) translateY(-4px) scale(1.04); }
+  .sticky small { display: block; margin-top: 6px; font: 700 10px 'JetBrains Mono'; opacity: .55; }
+  /* collage objects */
+  .obj { position: absolute; cursor: pointer; z-index: 3; transform: rotate(var(--r)); transition: transform .45s cubic-bezier(.2,1.5,.4,1), filter .3s; }
+  .obj:hover, .obj.on { transform: rotate(calc(var(--r) * .25)) scale(1.05) translateY(-6px); z-index: 8; filter: drop-shadow(0 2px 1px rgba(60,30,0,.25)) drop-shadow(0 26px 28px rgba(60,30,0,.35)); }
+  .tape { position: absolute; z-index: 2; width: 96px; height: 28px; background: repeating-linear-gradient(45deg, rgba(255,255,255,.28) 0 6px, transparent 6px 12px), var(--tc, rgba(255,214,107,.72)); clip-path: polygon(0 8%, 4% 0, 8% 10%, 12% 0, 100% 0, 96% 12%, 100% 25%, 95% 40%, 100% 55%, 96% 70%, 100% 85%, 97% 100%, 0 100%, 4% 86%, 0 72%, 5% 58%, 0 44%, 4% 30%); mix-blend-mode: multiply; }
+  /* VIDEO: a cinema ticket */
+  .ticket { --r: -6deg; left: 47vw; top: 11vh; width: 410px; height: 176px; }
+  .ticket .tk { position: absolute; inset: 0; display: flex; background: linear-gradient(180deg, #ff8b5e, #ff7849); color: #3a1206; -webkit-mask: radial-gradient(circle at 0 50%, transparent 15px, #000 16px) left / 51% 100% no-repeat, radial-gradient(circle at 100% 50%, transparent 15px, #000 16px) right / 51% 100% no-repeat; mask: radial-gradient(circle at 0 50%, transparent 15px, #000 16px) left / 51% 100% no-repeat, radial-gradient(circle at 100% 50%, transparent 15px, #000 16px) right / 51% 100% no-repeat; }
+  .tk .stub { width: 92px; border-right: 2.5px dashed rgba(58,18,6,.4); display: grid; place-items: center; }
+  .tk .stub b { writing-mode: vertical-rl; transform: rotate(180deg); font: 400 26px 'Bebas Neue'; letter-spacing: .2em; }
+  .tk .main { flex: 1; padding: 16px 30px 14px 22px; position: relative; }
+  .tk .main .co { font: 400 13px 'L.A. Noire Typewriter', monospace; letter-spacing: .1em; }
+  .tk .main h3 { margin: 4px 0 0; font: 400 74px/0.9 'L.A. Noire Heroic', 'Bebas Neue', sans-serif; letter-spacing: .02em; color: #2a0c03; }
+  .tk .main .row { display: flex; justify-content: space-between; margin-top: 8px; font: 700 11px 'JetBrains Mono'; letter-spacing: .1em; }
+  .tk .main .no { position: absolute; right: 26px; top: 16px; font: 400 14px 'L.A. Noire Typewriter', monospace; color: #b0270b; }
+  .tk .film { position: absolute; right: 26px; top: 42px; width: 64px; height: 46px; border-radius: 4px; background: #2a0c03; display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; padding: 5px; }
+  .tk .film i { background: #ffc2a3; border-radius: 1px; opacity: .85; }
+  /* AUDIO: a scrap of sheet music with a rubber stamp */
+  .sheet { --r: 3deg; left: 49vw; top: 50vh; width: 440px; height: 270px; }
+  .sheet .pg { position: absolute; inset: 0; background: #faf6ea; padding: 22px 28px; overflow: hidden; }
+  .sheet .pg h4 { margin: 0; font: italic 400 24px 'Playfair Display', serif; color: #2b2620; text-align: center; }
+  .sheet .pg h4 small { display: block; font: 400 12px 'L.A. Noire Typewriter', monospace; font-style: normal; color: #6e655a; margin-top: 2px; }
+  .sheet svg.mus { position: absolute; left: 22px; right: 22px; top: 82px; width: calc(100% - 44px); height: 170px; }
+  .stamp { position: absolute; z-index: 3; padding: 4px 16px 0; border: 4px solid #c8102e; border-radius: 6px; font: 400 64px/1 'Bebas Neue'; letter-spacing: .1em; color: #c8102e; mix-blend-mode: multiply; opacity: .88; -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 1.7'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"); mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 1.7'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"); }
+  .sheet .stamp { right: 30px; top: 118px; transform: rotate(-14deg); }
+  /* IMAGE: a photo-booth strip */
+  .booth { --r: 5deg; left: 81vw; top: 7vh; width: 158px; padding: 10px 10px 0; background: #fbfaf5; }
+  .booth .fr { height: 112px; margin-bottom: 8px; filter: grayscale(1) contrast(1.15) sepia(.15); transition: filter .6s; }
+  .booth:hover .fr, .booth.on .fr { filter: none; }
+  .booth .fr:nth-child(2) { transition-delay: .1s; } .booth .fr:nth-child(3) { transition-delay: .2s; } .booth .fr:nth-child(4) { transition-delay: .3s; }
+  .booth .cap { font: 400 30px/1 'L.A. Noire Notebook', 'Permanent Marker', cursive; text-align: center; padding: 6px 0 12px; color: #5b3fd6; }
+  /* stickers + stamps on the board */
+  .badge { position: absolute; z-index: 6; left: 38vw; top: 64vh; width: 116px; height: 116px; border-radius: 50%; background: #ffe24d; border: 5px solid #fff; box-shadow: 0 6px 12px rgba(60,30,0,.3); display: grid; place-items: center; text-align: center; transform: rotate(14deg); font: 400 44px/0.8 'San Andreas Pricedown', 'Bebas Neue'; color: #1d1a16; }
+  .badge small { display: block; font: 400 15px 'Bebas Neue'; letter-spacing: .14em; margin-top: 4px; }
+  .board-stamp { left: 80vw; top: 76vh; font-size: 30px; padding: 6px 12px 2px; transform: rotate(-7deg); z-index: 2; }
+  .doodles { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 7; }
+  .doodles path { fill: none; stroke: #1d1a16; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: draw 1s var(--d, .8s) ease-out forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .scribble { position: absolute; z-index: 7; font: 400 26px 'Permanent Marker', cursive; color: #1d1a16; transform: rotate(-8deg); pointer-events: none; opacity: 0; animation: pop .4s 1.5s forwards; }
+  @keyframes pop { to { opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="ransom" id="ransom"></div>
+<div class="strip shadow" id="strip"></div>
+<div class="note shadow" id="note"></div>
+<div class="tape" id="notetape" style="transform: rotate(-4deg); --tc: rgba(160,138,255,.6)"></div>
+<div class="badge">100%<small>OFFLINE</small></div>
+
+<div class="obj ticket shadow" data-id="video"><div class="tk"><div class="stub"><b>ADMIT ONE</b></div><div class="main"><div class="co">STRATA PICTURES</div><h3>VIDEO</h3><div class="row"><span>SCREEN 1</span><span>ROW 1</span><span>SEAT 1</span></div><span class="no">Nº 000001</span><div class="film"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div><div class="tape" style="left: -30px; top: -8px; transform: rotate(-38deg)"></div><div class="tape" style="right: -26px; bottom: -6px; transform: rotate(-32deg); --tc: rgba(53,214,180,.55)"></div></div>
+
+<div class="obj sheet shadow" data-id="audio"><div class="pg" id="pg"><h4>Audio, Op. 2<small>for voice, microphone &amp; one good pair of headphones</small></h4><svg class="mus" id="mus" viewBox="0 0 396 170" preserveAspectRatio="none"></svg></div><div class="stamp">AUDIO</div><div class="tape" style="left: 170px; top: -14px; transform: rotate(3deg); --tc: rgba(255,120,73,.55)"></div></div>
+
+<div class="obj booth shadow" data-id="image"><div class="fr" style="background: radial-gradient(circle at 70% 30%, #fff1c9 0 8%, transparent 9%), linear-gradient(#ff9a5c, #ffd1a6 55%, #4a6b3a 56%, #2c4423)"></div><div class="fr" style="background: radial-gradient(ellipse 30% 36% at 50% 45%, #f0c3a0 0 98%, transparent), radial-gradient(ellipse 52% 40% at 50% 100%, #5b3fd6 0 98%, transparent), linear-gradient(135deg, #d9d0ff, #a08aff)"></div><div class="fr" style="background: conic-gradient(from 200deg at 50% 70%, #35d6b4, #a08aff, #ff7849, #ffe24d, #35d6b4)"></div><div class="fr" style="background: linear-gradient(transparent 60%, #1d3a5f 60%), linear-gradient(160deg, #8ec5ff, #e0f0ff 60%); position: relative"></div><div class="cap">image!</div><div class="tape" style="left: 30px; top: -16px; transform: rotate(-6deg); --tc: rgba(255,158,199,.6)"></div></div>
+
+<div class="stamp board-stamp">NOTHING UPLOADED</div>
+<div class="stickies" id="stickies"></div>
+<svg class="doodles" id="doodles"></svg>
+<div class="scribble" id="scrib">pick one!</div>
+<script>
+// a small seeded random so the ransom note is the same every visit
+let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const FONTS = [
+  ["'San Andreas Pricedown'", 1.05], ["'San Andreas Gothic'", 1], ["'L.A. Noire Heroic'", 1], ["'L.A. Noire Typewriter'", .9], ["'Playfair Display'", 1, 'italic 700'],
+  ["'Bebas Neue'", 1.1], ["'L.A. Noire Chandler'", 1], ["'Permanent Marker'", .9], ["'L.A. Noire Futura'", .95], ["'Pacifico'", .8], ["Manrope", .95, '800'],
+];
+const LOOKS = [['#fbf7ec', '#1d1a16'], ['#1d1a16', '#fbf7ec'], ['#ffe24d', '#1d1a16'], ['#c8102e', '#fff'], ['#ff7849', '#2a0c03'], ['#35d6b4', '#06302a'], ['#a08aff', '#fff'], ['#f3e3c3', '#7a1d10'], ['#fff', '#c8102e'], ['#2b3a67', '#ffe24d']];
+const ransom = document.getElementById('ransom');
+['STRATA', 'STUDIO'].forEach((word, wi) => {
+  const w = document.createElement('div'); w.className = 'w';
+  [...word].forEach((ch, i) => {
+    const f = FONTS[Math.floor(rnd() * FONTS.length)], L = LOOKS[Math.floor(rnd() * LOOKS.length)];
+    const s = document.createElement('span'); s.textContent = rnd() < 0.3 && f[0] !== "'San Andreas Pricedown'" ? ch.toLowerCase() : ch;
+    const size = (wi ? 60 : 76) * f[1] * (0.85 + rnd() * 0.3);
+    s.style.cssText = `font:${f[2] || '400'} ${size}px ${f[0]},sans-serif;background:${L[0]};color:${L[1]};--r:${(rnd() * 16 - 8).toFixed(1)}deg;--y:${(rnd() * 10 - 5).toFixed(0)}px`;
+    // little torn edges on each cut-out letter
+    const j = () => (rnd() * 6).toFixed(1);
+    s.style.clipPath = `polygon(${j()}% ${j()}%, ${50 + +j()}% 0, ${100 - j()}% ${j()}%, 100% ${50 - j()}%, ${100 - j()}% ${100 - j()}%, ${50 - j()}% 100%, ${j()}% ${100 - j()}%, 0 ${50 + +j()}%)`;
+    w.append(s);
+  });
+  ransom.append(w);
+});
+const strip = document.getElementById('strip');
+strip.textContent = SW.tagline;
+// torn top & bottom edges for the tagline strip
+const tear = (el, top, bottom, right) => {
+  const W = el.offsetWidth, H = el.offsetHeight, pts = [];
+  for (let x = 0; x <= W; x += 9) pts.push(`${x}px ${top ? (rnd() * 5).toFixed(1) : 0}px`);
+  if (right) for (let y = 0; y <= H; y += 9) pts.push(`${W - (rnd() * 6).toFixed(1)}px ${y}px`);
+  for (let x = W; x >= 0; x -= 9) pts.push(`${x}px ${bottom ? H - (rnd() * 6).toFixed(1) : H}px`);
+  el.style.clipPath = `polygon(${pts.join(',')})`;
+};
+// stack the left column under the title once the fonts have their real size
+function layout() {
+  const rb = ransom.getBoundingClientRect().bottom;
+  strip.style.top = rb + 16 + 'px';
+  const sb = strip.getBoundingClientRect().bottom;
+  note.style.top = sb + 22 + 'px';
+  const nt = document.getElementById('notetape'); nt.style.left = note.offsetLeft + 160 + 'px'; nt.style.top = sb + 8 + 'px';
+}
+document.fonts.ready.then(() => { layout(); tear(strip, true, true); tear(document.getElementById('pg'), false, true, true); doodles(); });
+addEventListener('resize', layout);
+
+// sheet music: staves with a melody that bounces when you hover the sheet
+const mus = document.getElementById('mus');
+let svg = '';
+[0, 1].forEach(st => {
+  const y0 = 18 + st * 82;
+  for (let k = 0; k < 5; k++) svg += `<line x1="0" x2="396" y1="${y0 + k * 9}" y2="${y0 + k * 9}" stroke="#3b342c" stroke-width=".9"/>`;
+  svg += `<text x="2" y="${y0 + 33}" font-size="46" font-family="Segoe UI Symbol, serif" fill="#2b2620">𝄞</text>`;
+  for (let n = 0; n < 11; n++) {
+    const x = 50 + n * 31 + rnd() * 6, step = Math.floor(rnd() * 9) - 2, y = y0 + 36 - step * 4.5;
+    svg += `<g class="nt" style="transform-origin:${x}px ${y}px;animation-delay:${(n * 0.06 + st * 0.3).toFixed(2)}s"><ellipse cx="${x}" cy="${y}" rx="5" ry="3.6" transform="rotate(-20 ${x} ${y})" fill="#2b2620"/><line x1="${x + 4.6}" x2="${x + 4.6}" y1="${y}" y2="${y - 26}" stroke="#2b2620" stroke-width="1.3"/></g>`;
+    if (n % 4 === 3) svg += `<line x1="${x + 16}" x2="${x + 16}" y1="${y0}" y2="${y0 + 36}" stroke="#3b342c" stroke-width="1"/>`;
+  }
+});
+mus.innerHTML = svg;
+const ms = document.createElement('style'); ms.textContent = '.sheet:hover .nt, .sheet.on .nt { animation: hop .5s ease-in-out infinite alternate; } @keyframes hop { to { transform: translateY(-5px) rotate(-6deg); } }'; document.head.append(ms);
+
+// sticky notes
+const ST = [['#ffe873', 'Open a project…', 'CTRL O', '-3deg'], ['#ff9ec7', 'Find any tool', 'CTRL K', '2deg'], ['#9fd8ff', 'All the shortcuts', '?', '-1.5deg']];
+document.getElementById('stickies').innerHTML = ST.map(([bg, t, k, r]) => `<div class="sticky" style="background:${bg};--r:${r}">${t}<small>${k}</small></div>`).join('');
+
+// the handwritten note rewrites itself for whatever you're pointing at
+const note = document.getElementById('note');
+const write = lines => { note.innerHTML = lines.map((l, i) => `<span class="l" style="animation-delay:${(i * 0.22).toFixed(2)}s">${l}</span>`).join(''); };
+const idle = () => { note.style.removeProperty('--hl'); write(['<span class="big hl">What are we making?</span>', '1 &mdash; a video', '2 &mdash; some audio', '3 &mdash; an image', '<small style="font-size:19px;opacity:.7">(or just grab the thing you want &rarr;)</small>']); };
+idle();
+let cur = null;
+document.querySelectorAll('.obj').forEach(o => {
+  const m = SW.modes.find(x => x.id === o.dataset.id);
+  o.addEventListener('mouseenter', () => { if (cur === m.id) return; cur = m.id; note.style.setProperty('--hl', m.light); write([`<span class="big hl">${m.name}!</span> <span style="font-size:19px">(press ${m.key})</span>`, ...m.pts.map(p => '- ' + p)]); });
+  o.addEventListener('mouseleave', () => { cur = null; idle(); });
+  o.addEventListener('click', () => SW.choose(m.id));
+});
+
+// hand-drawn doodles: an underline, an arrow from the note to the pile, a few stars
+const dd = document.getElementById('doodles');
+function doodles() {
+  const W = innerWidth, H = innerHeight, r = ransom.getBoundingClientRect(), n = note.getBoundingClientRect(), t = document.querySelector('.ticket').getBoundingClientRect();
+  const ax = n.right + 8, ay = n.top + 64, bx = t.left - 10, by = t.bottom + 26;
+  const star = (x, y, s) => `M${x} ${y - s} L${x + s * .3} ${y - s * .3} L${x + s} ${y} L${x + s * .3} ${y + s * .3} L${x} ${y + s} L${x - s * .3} ${y + s * .3} L${x - s} ${y} L${x - s * .3} ${y - s * .3} Z`;
+  const P = [
+    [`M${r.left + 4} ${r.bottom + 6} C ${r.left + 120} ${r.bottom + 14}, ${r.right - 160} ${r.bottom}, ${r.right - 10} ${r.bottom + 10} S ${r.right - 60} ${r.bottom + 20}, ${r.right - 140} ${r.bottom + 16}`, .5],
+    [`M${ax} ${ay} C ${ax + 80} ${ay - 70}, ${bx - 60} ${by + 60}, ${bx} ${by}`, 1.2],
+    [`M${bx - 16} ${by - 2} L${bx} ${by} L${bx - 6} ${by + 15}`, 1.9],
+    [star(W * 0.93, H * 0.82, 14), 1.4], [star(W * 0.44, H * 0.12, 10), 1.6], [star(W * 0.97, H * 0.6, 8), 1.8],
+  ];
+  dd.innerHTML = P.map(([d, delay]) => `<path d="${d}" style="--d:${delay}s"/>`).join('');
+  dd.querySelectorAll('path').forEach(p => p.style.setProperty('--len', Math.ceil(p.getTotalLength()) + 1));
+  const sc = document.getElementById('scrib'); sc.style.left = bx + 14 + 'px'; sc.style.top = by + 6 + 'px';
+}
+addEventListener('resize', doodles);
+SW.keys(e => { const m = SW.modes.find(x => x.key === e.key); if (m) { const o = document.querySelector(`.obj[data-id="${m.id}"]`); o.classList.add('on'); setTimeout(() => o.classList.remove('on'), 900); } });
+</script>
+</body>
+</html>

@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbit</title>
+<link rel="stylesheet" href="../../css/fonts.css">
+<script src="../../js/core/icons.js"></script>
+<script src="common.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #04050b; color: #e9ecf7; font-family: Manrope, sans-serif; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  header { position: fixed; left: 0; right: 0; top: 7vh; text-align: center; pointer-events: none; z-index: 2; }
+  header .eb { font: 600 11px 'JetBrains Mono'; letter-spacing: .6em; color: #7b82a3; }
+  header h1 { margin: 12px 0 0; font: 300 clamp(30px, 3.4vw, 52px)/1 Manrope; letter-spacing: .42em; padding-left: .42em; }
+  header h1 b { font-weight: 800; }
+  header p { margin: 14px 0 0; font-size: 14px; color: #8d93b0; }
+  .card { position: fixed; left: 0; top: 0; z-index: 3; width: 290px; padding: 16px 18px; border-radius: 16px; background: rgba(14,16,30,.72); border: 1px solid rgba(255,255,255,.1); backdrop-filter: blur(14px); box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 1px color-mix(in srgb, var(--c) 30%, transparent), 0 0 40px -10px var(--c); opacity: 0; transform: scale(.94); transform-origin: 0 50%; transition: opacity .2s, transform .3s cubic-bezier(.2,1.4,.4,1); pointer-events: none; }
+  .card.on { opacity: 1; transform: none; }
+  .card.left { transform-origin: 100% 50%; }
+  .card .k { font: 700 10.5px 'JetBrains Mono'; letter-spacing: .2em; color: var(--c); }
+  .card h2 { margin: 6px 0 4px; font: 800 22px Manrope; letter-spacing: -.02em; }
+  .card p { margin: 0; font-size: 12.5px; line-height: 1.55; color: #a5abc6; }
+  .card ul { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 5px; }
+  .card li { font: 650 12px Manrope; color: #d7dbef; display: flex; gap: 8px; align-items: center; }
+  .card li::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); }
+  .card .go { margin-top: 12px; font: 700 11px 'JetBrains Mono'; color: #7b82a3; letter-spacing: .1em; }
+  .acts { position: fixed; left: 50%; bottom: 5vh; transform: translateX(-50%); z-index: 2; display: flex; gap: 8px; }
+  .acts button { display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 15px; border-radius: 18px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); color: #c9cde0; font: 700 12.5px Manrope; cursor: pointer; transition: background .2s, border-color .2s; }
+  .acts button:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.25); }
+  .acts kbd { font: 600 10px 'JetBrains Mono'; opacity: .55; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<header><div class="eb">WELCOME TO</div><h1><b>STRATA</b> STUDIO</h1><p id="tag"></p></header>
+<div class="card" id="card"></div>
+<div class="acts" id="acts"></div>
+<script>
+document.getElementById('tag').textContent = SW.tagline + ' Click a planet — or press 1, 2, 3.';
+document.getElementById('acts').innerHTML = SW.actions.map(([ic, l, k]) => `<button>${SW.icon(ic, 15)}${l}${k ? `<kbd>${k}</kbd>` : ''}</button>`).join('');
+const cv = document.getElementById('c'), c = cv.getContext('2d'), card = document.getElementById('card');
+const M = SW.modes;
+let W, H, dpr, cx, cy, U, stars = [], neb, parts = [];
+const hash = i => { const x = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
+const mouse = { x: -1e4, y: -1e4, px: 0, py: 0 };
+
+function resize() {
+  dpr = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+  cx = W / 2; cy = H * 0.52; U = Math.min(W / 1440, H / 900);
+  stars = [];
+  for (let L = 0; L < 3; L++) for (let i = 0; i < 160 + L * 60; i++) stars.push({ x: Math.random() * W * 1.1 - W * 0.05, y: Math.random() * H * 1.1 - H * 0.05, r: (0.4 + Math.random() * (0.7 + L * 0.5)), d: 0.006 + L * 0.014, tw: Math.random() * 7, a: 0.35 + Math.random() * 0.6 });
+  // soft nebulae in the three editor colours, painted once
+  neb = document.createElement('canvas'); neb.width = W; neb.height = H; const n = neb.getContext('2d');
+  [[0.18, 0.3, '255,120,73'], [0.82, 0.25, '53,214,180'], [0.7, 0.85, '160,138,255'], [0.25, 0.8, '120,90,255']].forEach(([x, y, col]) => {
+    const g = n.createRadialGradient(W * x, H * y, 0, W * x, H * y, W * 0.45); g.addColorStop(0, `rgba(${col},.13)`); g.addColorStop(1, `rgba(${col},0)`); n.fillStyle = g; n.fillRect(0, 0, W, H);
+  });
+  buildLogo();
+}
+
+// the app logo (three slanted bars) rebuilt from particles
+function buildLogo() {
+  const s = 9.6 * U, k = Math.tan(-12 * Math.PI / 180), step = Math.max(2.6, 3.2 * U) / s;
+  const bars = [[2, 5, M[0]], [4, 13, M[1]], [6, 21, M[2]]];
+  const old = parts; parts = [];
+  bars.forEach(([bx, by, m]) => {
+    for (let y = by; y <= by + 6; y += step) for (let x = bx; x <= bx + 22; x += step) {
+      // inside the rounded bar?
+      const qx = Math.max(bx + 3 - x, 0, x - (bx + 19)), qy = Math.max(by + 3 - y, 0, y - (by + 3));
+      if (qx * qx + qy * qy > 9) continue;
+      const lx = x + k * y + 4 - 16, ly = y - 16;
+      const tx = cx + lx * s, ty = cy + ly * s;
+      const o = old[parts.length];
+      const a = Math.random() * 7, r = 300 + Math.random() * 600;
+      parts.push({ tx, ty, x: o ? o.x : cx + Math.cos(a) * r, y: o ? o.y : cy + Math.sin(a) * r, vx: 0, vy: 0, m, sz: 1.2 + Math.random() * 1.4, ph: Math.random() * 7, lit: Math.random() < 0.18 });
+    }
+  });
+}
+
+const PL = [
+  { m: M[0], a: 0.205, b: 0.31, sp: 0.16, ph: 2.3, r: 30 },
+  { m: M[1], a: 0.3, b: 0.3, sp: 0.11, ph: 0.4, r: 27 },
+  { m: M[2], a: 0.4, b: 0.3, sp: 0.075, ph: 4.4, r: 29 },
+];
+const TILT = -0.12;
+let t = 0, last = performance.now(), ts = 1, hover = -1, pulse = null;
+function pos(p) {
+  const A = W * p.a, B = A * p.b, th = p.ph + t * p.sp;
+  const ex = Math.cos(th) * A, ey = Math.sin(th) * B;
+  const x = cx + ex * Math.cos(TILT) - ey * Math.sin(TILT), y = cy + ex * Math.sin(TILT) + ey * Math.cos(TILT);
+  const depth = Math.sin(th);
+  return { x, y, depth, s: (0.78 + 0.32 * (depth + 1) / 2) * U * (hover === PL.indexOf(p) ? 1.18 : 1) };
+}
+function ring(p, front) {
+  const A = W * p.a, B = A * p.b;
+  c.save(); c.translate(cx, cy); c.rotate(TILT);
+  c.strokeStyle = `rgba(${front ? '200,210,255,.16' : '200,210,255,.07'})`; c.lineWidth = 1;
+  c.setLineDash(front ? [] : [3, 6]);
+  c.beginPath(); c.ellipse(0, 0, A, B, 0, front ? 0 : Math.PI, front ? Math.PI : Math.PI * 2); c.stroke();
+  c.restore(); c.setLineDash([]);
+}
+function sphere(x, y, r, m) {
+  const g = c.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
+  g.addColorStop(0, m.light); g.addColorStop(0.45, m.color); g.addColorStop(0.85, m.deep); g.addColorStop(1, '#120a1c');
+  c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
+}
+function halo(x, y, r, m, k = 1) {
+  c.save(); c.globalCompositeOperation = 'lighter';
+  const g = c.createRadialGradient(x, y, r * 0.6, x, y, r * 3.2); g.addColorStop(0, m.color + Math.round(70 * k).toString(16).padStart(2, '0')); g.addColorStop(1, m.color + '00');
+  c.fillStyle = g; c.beginPath(); c.arc(x, y, r * 3.2, 0, 7); c.fill(); c.restore();
+}
+function planet(i, P) {
+  const p = PL[i], m = p.m, r = p.r * P.s, x = P.x, y = P.y, on = hover === i;
+  halo(x, y, r, m, on ? 1.6 : 1);
+  if (m.id === 'video') {
+    // a ringed planet whose ring is a strip of film
+    const film = (from, to) => { c.save(); c.translate(x, y); c.rotate(-0.38);
+      c.strokeStyle = 'rgba(40,22,14,.92)'; c.lineWidth = 9 * P.s; c.beginPath(); c.ellipse(0, 0, r * 2.05, r * 0.56, 0, from, to); c.stroke();
+      c.strokeStyle = 'rgba(255,214,180,.85)'; c.lineWidth = 1.6 * P.s; c.setLineDash([2.2 * P.s, 3.6 * P.s]); c.lineDashOffset = -t * 18;
+      [-3.1, 3.1].forEach(o => { c.beginPath(); c.ellipse(0, 0, r * 2.05 + o * P.s, r * 0.56 + o * P.s * 0.28, 0, from, to); c.stroke(); });
+      c.restore(); c.setLineDash([]); };
+    film(Math.PI, Math.PI * 2); sphere(x, y, r, m);
+    c.save(); c.beginPath(); c.arc(x, y, r, 0, 7); c.clip(); c.fillStyle = 'rgba(255,230,200,.12)';
+    for (let k = -2; k <= 2; k++) c.fillRect(x - r, y + k * r * 0.33 - r * 0.06, r * 2, r * 0.1); c.restore();
+    film(0, Math.PI);
+  } else if (m.id === 'audio') {
+    // sound waves ripple outward from it
+    for (let k = 0; k < 3; k++) { const q = ((t * 0.5 + k / 3) % 1); c.strokeStyle = `rgba(53,214,180,${0.55 * (1 - q)})`; c.lineWidth = 1.5; c.beginPath(); c.arc(x, y, r * (1.15 + q * 1.6), 0, 7); c.stroke(); }
+    sphere(x, y, r, m);
+    c.save(); c.beginPath(); c.arc(x, y, r, 0, 7); c.clip(); c.strokeStyle = 'rgba(220,255,248,.55)'; c.lineWidth = 1.4 * P.s; c.beginPath();
+    for (let q = -r; q <= r; q += 2) { const a = Math.sin(q * 0.35 + t * 6) * Math.sin(q * 0.07 + t) * r * 0.32; q === -r ? c.moveTo(x + q, y + a) : c.lineTo(x + q, y + a); }
+    c.stroke(); c.restore();
+  } else {
+    // a cut-gem planet with a tiny pixel moon
+    sphere(x, y, r, m);
+    c.save(); c.beginPath(); c.arc(x, y, r, 0, 7); c.clip();
+    const pts = [[0, 0]]; for (let k = 0; k < 9; k++) { const a = k / 9 * 6.283 + t * 0.15; pts.push([Math.cos(a) * r * (0.55 + 0.5 * hash(k)), Math.sin(a) * r * (0.55 + 0.5 * hash(k + 4))]); }
+    for (let k = 1; k <= 9; k++) { const a = pts[k], b = pts[k % 9 + 1]; const lit = 0.5 + 0.5 * Math.sin(k * 1.7 + t * 0.6); c.fillStyle = lit > 0.5 ? `rgba(255,255,255,${(lit - 0.5) * 0.4})` : `rgba(20,0,60,${(0.5 - lit) * 0.5})`; c.beginPath(); c.moveTo(x + pts[0][0], y + pts[0][1]); c.lineTo(x + a[0], y + a[1]); c.lineTo(x + b[0], y + b[1]); c.fill(); c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 0.8; c.stroke(); }
+    c.restore();
+    const ma = t * 1.4, mx = x + Math.cos(ma) * r * 1.7, my = y + Math.sin(ma) * r * 0.6, ms = 5 * P.s;
+    c.fillStyle = '#d9d0ff'; c.save(); c.translate(mx, my); c.rotate(t); c.fillRect(-ms / 2, -ms / 2, ms, ms); c.restore();
+  }
+  // label
+  c.font = `700 ${Math.round(11 * Math.max(0.9, P.s))}px Manrope`; c.textAlign = 'center'; c.letterSpacing = '3px';
+  c.fillStyle = on ? '#fff' : 'rgba(220,226,245,.7)'; c.fillText(m.name.toUpperCase(), x, y + r * (m.id === 'video' ? 1.5 : 1) + 22);
+  c.letterSpacing = '0px';
+  if (on) { c.save(); c.strokeStyle = m.color; c.lineWidth = 1.2; c.setLineDash([4, 5]); c.lineDashOffset = t * 12; c.beginPath(); c.arc(x, y, r * (m.id === 'video' ? 2.4 : 1.9), 0, 7); c.stroke(); c.restore(); }
+}
+
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  ts += ((hover >= 0 ? 0.06 : 1) - ts) * Math.min(1, dt * 5);
+  t += dt * ts;
+  const T = now / 1000;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.fillStyle = '#04050b'; c.fillRect(0, 0, W, H);
+  c.drawImage(neb, 0, 0, W, H);
+  mouse.px += ((mouse.x > -1e3 ? mouse.x - cx : 0) - mouse.px) * 0.05; mouse.py += ((mouse.y > -1e3 ? mouse.y - cy : 0) - mouse.py) * 0.05;
+  for (const s of stars) { c.globalAlpha = s.a * (0.6 + 0.4 * Math.sin(T * 1.6 + s.tw)); c.fillStyle = '#dfe6ff'; c.fillRect(s.x - mouse.px * s.d, s.y - mouse.py * s.d, s.r, s.r); }
+  c.globalAlpha = 1;
+  // a shooting star every so often
+  const sh = (T % 9) / 1.1;
+  if (sh < 1) { const sx = W * (0.15 + hash(Math.floor(T / 9)) * 0.6) + sh * 260, sy = H * 0.12 + sh * 120; const g = c.createLinearGradient(sx - 120, sy - 55, sx, sy); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(1, `rgba(255,255,255,${0.8 * (1 - sh)})`); c.strokeStyle = g; c.lineWidth = 1.4; c.beginPath(); c.moveTo(sx - 120, sy - 55); c.lineTo(sx, sy); c.stroke(); }
+  const P = PL.map(pos);
+  PL.forEach(p => ring(p, false));
+  // planets behind the sun first, then the sun, then the ones in front
+  const order = [0, 1, 2].sort((a, b) => P[a].depth - P[b].depth);
+  order.filter(i => P[i].depth < 0).forEach(i => planet(i, P[i]));
+  // the particle sun
+  c.save(); c.globalCompositeOperation = 'lighter';
+  const core = c.createRadialGradient(cx, cy, 0, cx, cy, 260 * U); core.addColorStop(0, 'rgba(255,240,230,.10)'); core.addColorStop(1, 'rgba(255,240,230,0)'); c.fillStyle = core; c.fillRect(cx - 300 * U, cy - 300 * U, 600 * U, 600 * U);
+  for (const q of parts) {
+    let fx = (q.tx - q.x) * 0.045, fy = (q.ty - q.y) * 0.045;
+    const dx = q.x - mouse.x, dy = q.y - mouse.y, d2 = dx * dx + dy * dy;
+    if (d2 < 9000) { const f = (9000 - d2) / 9000 * 2.4; const d = Math.sqrt(d2) || 1; fx += dx / d * f; fy += dy / d * f; }
+    q.vx = (q.vx + fx) * 0.84; q.vy = (q.vy + fy) * 0.84; q.x += q.vx; q.y += q.vy;
+    const tw = q.lit ? 0.6 + 0.4 * Math.sin(T * 3 + q.ph) : 0.75;
+    c.globalAlpha = tw; c.fillStyle = q.lit ? q.m.light : q.m.color;
+    c.fillRect(q.x + Math.sin(T + q.ph) * 0.6, q.y + Math.cos(T * 1.3 + q.ph) * 0.6, q.sz, q.sz);
+  }
+  c.restore(); c.globalAlpha = 1;
+  PL.forEach(p => ring(p, true));
+  order.filter(i => P[i].depth >= 0).forEach(i => planet(i, P[i]));
+  if (pulse) { const k = (now - pulse.t) / 700; if (k > 1) pulse = null; else { c.strokeStyle = pulse.m.color; c.globalAlpha = 1 - k; c.lineWidth = 3 * (1 - k) + 0.5; c.beginPath(); c.arc(pulse.x, pulse.y, 30 + k * 140, 0, 7); c.stroke(); c.globalAlpha = 1; } }
+  // hover + info card
+  let h = -1, best = 1e9;
+  P.forEach((q, i) => { const d = Math.hypot(mouse.x - q.x, mouse.y - q.y); if (d < PL[i].r * q.s * 2 + 14 && d < best) { best = d; h = i; } });
+  if (h !== hover) {
+    hover = h; document.body.style.cursor = h >= 0 ? 'pointer' : '';
+    if (h >= 0) { const m = M[h]; card.style.setProperty('--c', m.color); card.innerHTML = `<div class="k">PLANET 0${h + 1} · PRESS ${m.key}</div><h2>${m.name}</h2><p>${m.desc}</p><ul>${m.pts.map(p => `<li>${p}</li>`).join('')}</ul><div class="go">CLICK TO LAND →</div>`; }
+    card.classList.toggle('on', h >= 0);
+  }
+  if (hover >= 0) { const q = P[hover], off = PL[hover].r * q.s * 2.6 + 18;
+    let left = q.x < cx; if (left && q.x - off - 290 < 20) left = false; if (!left && q.x + off + 290 > W - 20) left = true; card.classList.toggle('left', left); card.style.left = (left ? q.x - off - 290 : q.x + off) + 'px'; card.style.top = Math.max(20, Math.min(H - card.offsetHeight - 20, q.y - card.offsetHeight / 2)) + 'px'; }
+  frame.P = P;
+  requestAnimationFrame(frame);
+}
+addEventListener('resize', resize);
+addEventListener('pointermove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+document.documentElement.addEventListener('pointerleave', () => { mouse.x = mouse.y = -1e4; });
+const land = i => { const q = frame.P[i]; pulse = { x: q.x, y: q.y, m: M[i], t: performance.now() }; SW.choose(M[i].id); };
+addEventListener('click', () => { if (hover >= 0) land(hover); });
+addEventListener('keydown', e => { const i = M.findIndex(m => m.key === e.key); if (i >= 0) land(i); });
+resize();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

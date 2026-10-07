@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Light Table</title>
+<link rel="stylesheet" href="../../css/fonts.css">
+<link rel="stylesheet" href="../../css/gamefonts.css">
+<script src="../../js/core/icons.js"></script>
+<script src="common.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: Manrope, sans-serif; color: #2a241c; }
+  body { background: radial-gradient(ellipse at 50% 70%, #3a2f25 0%, #17120e 55%, #0b0907 100%); }
+  /* desk wood grain */
+  body::before { content: ''; position: fixed; inset: 0; opacity: .35; background: repeating-linear-gradient(92deg, rgba(0,0,0,.25) 0 2px, transparent 2px 9px, rgba(255,200,140,.04) 9px 11px, transparent 11px 23px); pointer-events: none; }
+  .scene { position: fixed; inset: 0; perspective: 1800px; perspective-origin: 50% 0%; }
+  .table { position: absolute; left: 50%; top: 23vh; width: min(1180px, 84vw); height: min(620px, 66vh); transform: translateX(-50%) rotateX(18deg); transform-style: preserve-3d; border-radius: 26px;
+    background: radial-gradient(ellipse at 45% 40%, #fffdf6 0%, #f6efe0 45%, #e9dfc9 100%);
+    box-shadow: 0 0 0 12px #9aa0a6, 0 0 0 14px #6b7076, 0 0 120px 30px rgba(255,236,190,.38), 0 60px 80px rgba(0,0,0,.6); }
+  .table::before { content: ''; position: absolute; inset: 18px; border-radius: 14px; background-image: linear-gradient(rgba(120,100,70,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(120,100,70,.12) 1px, transparent 1px); background-size: 40px 40px; }
+  .table::after { content: 'LIGHT BOX · 5000K'; position: absolute; right: 26px; bottom: 14px; font: 700 10px 'JetBrains Mono'; letter-spacing: .2em; color: rgba(90,70,40,.35); }
+  .obj { position: absolute; cursor: pointer; transition: transform .45s cubic-bezier(.2,1.3,.4,1), filter .45s; transform-style: preserve-3d; }
+  .obj .body { transition: box-shadow .45s; }
+  .obj:hover, .obj.focus { transform: var(--rest) translateZ(60px) rotate(0deg) scale(1.04) !important; }
+  .table:has(.obj:hover) .obj:not(:hover) { filter: saturate(.6) brightness(.92); }
+  /* ---------- film strip ---------- */
+  .film { left: 5%; top: 14%; --rest: rotate(-7deg); transform: var(--rest); }
+  .film .body { width: 470px; height: 150px; background: linear-gradient(#2a1b11, #1e140d); border-radius: 4px; padding: 26px 14px; display: flex; gap: 12px; box-shadow: 0 10px 18px rgba(80,50,20,.35); position: relative; }
+  .film:hover .body { box-shadow: 0 50px 60px rgba(80,50,20,.35); }
+  .film .body::before, .film .body::after { content: ''; position: absolute; left: 8px; right: 8px; height: 9px; background: repeating-linear-gradient(90deg, transparent 0 9px, rgba(255,248,230,.95) 9px 19px); border-radius: 2px; }
+  .film .body::before { top: 8px; } .film .body::after { bottom: 8px; }
+  .film .fr { flex: 1; border-radius: 3px; position: relative; overflow: hidden; filter: sepia(.85) hue-rotate(-12deg) saturate(.7) brightness(.85); transition: filter .6s; }
+  .film:hover .fr { filter: none; }
+  .fr.a { background: radial-gradient(circle at 70% 35%, #ffe08a 0 12%, transparent 13%), linear-gradient(#ff8a5b, #ffcf8a 60%, #3a2c4a 61%, #1f1730); }
+  .fr.b { background: linear-gradient(transparent 55%, #182437 55%), radial-gradient(ellipse at 50% 120%, #ffb36b, #5b3b8a 60%, #1b1734); }
+  .fr.b::after { content: ''; position: absolute; left: 10%; right: 10%; bottom: 0; height: 60%; background: repeating-linear-gradient(90deg, #0e1420 0 12px, transparent 12px 16px), repeating-linear-gradient(transparent 0 6px, rgba(255,220,120,.6) 6px 8px); clip-path: polygon(0 40%, 18% 40%, 18% 10%, 34% 10%, 34% 30%, 52% 30%, 52% 0, 70% 0, 70% 25%, 86% 25%, 86% 45%, 100% 45%, 100% 100%, 0 100%); }
+  .fr.c { background: radial-gradient(circle at 50% 42%, #f2c6a0 0 18%, transparent 19%), radial-gradient(ellipse at 50% 100%, #c8492e 0 42%, transparent 43%), linear-gradient(135deg, #2d6a8a, #7cc0d8); }
+  .film .edge { position: absolute; left: 16px; bottom: -1px; font: 700 8px 'JetBrains Mono'; letter-spacing: .25em; color: #e0a25a; opacity: .8; }
+  /* ---------- cassette ---------- */
+  .tape { left: 40%; top: 50%; --rest: rotate(5deg); transform: var(--rest); }
+  .tape .body { width: 330px; height: 208px; border-radius: 14px; background: linear-gradient(160deg, #3a3b40, #222327 60%, #1a1b1e); position: relative; box-shadow: 0 12px 20px rgba(60,40,20,.4), inset 0 1px 0 rgba(255,255,255,.12); }
+  .tape:hover .body { box-shadow: 0 54px 60px rgba(60,40,20,.38), inset 0 1px 0 rgba(255,255,255,.12); }
+  .tape .lbl { position: absolute; left: 18px; right: 18px; top: 14px; height: 118px; border-radius: 6px; background: linear-gradient(#fbf6e8 0 26px, #35d6b4 26px 30px, #fbf6e8 30px); padding: 4px 12px; }
+  .tape .lbl b { font: 400 22px 'Permanent Marker', cursive; color: #1d6f62; transform: rotate(-2deg); display: inline-block; }
+  .tape .lbl span { float: right; font: 800 11px Manrope; letter-spacing: .2em; color: #9b8e74; margin-top: 7px; }
+  .tape .win { position: absolute; left: 50%; top: 52px; width: 200px; height: 62px; transform: translateX(-50%); border-radius: 31px; background: linear-gradient(#2a2420, #4a3b30); box-shadow: inset 0 2px 6px rgba(0,0,0,.7); display: flex; justify-content: space-between; align-items: center; padding: 0 12px; }
+  .tape .reel { width: 46px; height: 46px; border-radius: 50%; background: radial-gradient(circle, #f2efe8 0 7px, transparent 8px), conic-gradient(from 0deg, #f2efe8 0 10%, transparent 10% 33%, #f2efe8 33% 43%, transparent 43% 66%, #f2efe8 66% 76%, transparent 76%), radial-gradient(circle, #5a4334 0 22px, #6b5040 23px); box-shadow: 0 0 0 5px #3a2a20; }
+  .tape:hover .reel { animation: spin 1.1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .tape .screw { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #aaa, #555); }
+  .tape .bot { position: absolute; left: 50%; bottom: 0; width: 220px; height: 52px; transform: translateX(-50%); background: linear-gradient(#2e2f33, #1f2023); clip-path: polygon(10% 0, 90% 0, 100% 100%, 0 100%); border-radius: 4px; }
+  /* ---------- polaroid ---------- */
+  .pola { left: 70%; top: 7%; --rest: rotate(8deg); transform: var(--rest); }
+  .pola .body { width: 250px; height: 300px; background: #fdfcf8; padding: 14px 14px 0; box-shadow: 0 12px 20px rgba(80,60,30,.35); border-radius: 3px; }
+  .pola:hover .body { box-shadow: 0 54px 60px rgba(80,60,30,.32); }
+  .pola .ph { height: 222px; background: radial-gradient(circle at 74% 30%, #fff1b8 0 11%, transparent 12%), linear-gradient(#7a6cf0, #c2a8ff 45%, #ffb9d4 62%, #4f3a8a 63%, #2b2150); filter: grayscale(.85) brightness(1.25) contrast(.7) blur(1.2px); transition: filter 1.4s ease; position: relative; overflow: hidden; }
+  .pola .ph::after { content: ''; position: absolute; left: -10%; right: -10%; bottom: 0; height: 44%; background: #1e1838; clip-path: polygon(0 60%, 15% 30%, 30% 55%, 48% 10%, 64% 50%, 80% 25%, 100% 55%, 100% 100%, 0 100%); }
+  .pola:hover .ph { filter: none; }
+  .pola .cap { font: 400 26px 'Permanent Marker', cursive; color: #5b3fd6; text-align: center; padding-top: 10px; transform: rotate(-3deg); }
+  /* tape strips holding things */
+  .washi { position: absolute; width: 90px; height: 26px; background: rgba(255,206,120,.55); transform: rotate(-8deg); top: -12px; left: 40%; box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+  /* ---------- title: label-maker tape ---------- */
+  .dymo { position: fixed; left: 5.5vw; top: 6vh; z-index: 5; background: linear-gradient(#1d1d22, #0e0e11); color: #f4f4f4; padding: 10px 26px 9px; border-radius: 3px; font: 800 clamp(26px, 3vw, 42px) 'JetBrains Mono'; letter-spacing: .22em; transform: rotate(-2.5deg); box-shadow: 0 8px 18px rgba(0,0,0,.5);
+    text-shadow: 0 1px 0 rgba(255,255,255,.35), 0 -1px 0 rgba(0,0,0,.8); }
+  .dymo small { display: block; font-size: .32em; letter-spacing: .5em; opacity: .7; margin-top: 4px; }
+  .slip { position: fixed; left: 7vw; top: calc(6vh + clamp(96px, 9.2vw, 128px)); z-index: 5; background: #f6f0e1; padding: 10px 16px; font: 400 15px 'L.A. Noire Typewriter', 'Courier New', monospace; color: #3a3226; transform: rotate(1.2deg); box-shadow: 0 6px 14px rgba(0,0,0,.45); max-width: 520px; }
+  .acts { position: fixed; right: 4.5vw; top: 5.5vh; z-index: 5; display: flex; gap: 14px; }
+  .tag { position: relative; background: #e9d9b6; color: #3a2c18; padding: 9px 16px 9px 26px; font: 800 12px Manrope; border-radius: 3px 8px 8px 3px; cursor: pointer; transform: rotate(var(--r)); box-shadow: 0 6px 12px rgba(0,0,0,.4); transition: transform .3s cubic-bezier(.2,1.4,.4,1); display: flex; gap: 7px; align-items: center; }
+  .tag::before { content: ''; position: absolute; left: 9px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: #17120e; box-shadow: inset 0 1px 2px rgba(255,255,255,.3); }
+  .tag:hover { transform: rotate(0) translateY(-3px); }
+  /* ---------- index card with details ---------- */
+  .card { position: fixed; right: 5vw; bottom: 6vh; z-index: 6; width: 360px; min-height: 196px; background: #fffef9; background-image: linear-gradient(transparent 31px, rgba(80,140,200,.25) 32px), linear-gradient(90deg, transparent 38px, rgba(230,90,90,.35) 39px, transparent 40px); background-size: 100% 26px, 100% 100%; padding: 14px 18px 16px 52px; font: 400 14.5px/26px 'L.A. Noire Typewriter', 'Courier New', monospace; color: #2d2a24; transform: rotate(-2deg); box-shadow: 0 14px 30px rgba(0,0,0,.5); transition: transform .4s cubic-bezier(.2,1.4,.4,1); }
+  .card .stamp { position: absolute; right: 16px; top: 12px; font: 400 26px 'Bebas Neue'; letter-spacing: .1em; padding: 0 10px; border: 3px solid currentColor; border-radius: 6px; transform: rotate(9deg); opacity: .75; }
+  .card ul { margin: 2px 0 0; padding: 0 0 0 18px; }
+  .card .hint { color: #8a8173; }
+  .pickhint { position: fixed; left: 50%; bottom: 3vh; transform: translateX(-50%); z-index: 5; font: 600 11px 'JetBrains Mono'; letter-spacing: .18em; color: rgba(255,230,190,.45); }
+</style>
+</head>
+<body>
+<div class="dymo">STRATA STUDIO<small>VIDEO · AUDIO · IMAGE</small></div>
+<div class="slip" id="tag"></div>
+<div class="acts" id="acts"></div>
+<div class="scene"><div class="table" id="table">
+  <div class="obj film" data-id="video"><div class="washi" style="left:8%"></div><div class="body"><div class="fr a"></div><div class="fr b"></div><div class="fr c"></div><div class="edge">STRATA 400 ▸ 23 ▸ 24 ▸ VIDEO</div></div></div>
+  <div class="obj tape" data-id="audio"><div class="body">
+    <div class="lbl"><b>Audio — side A</b><span>C·90</span></div>
+    <div class="win"><div class="reel"></div><div class="reel"></div></div>
+    <div class="bot"></div>
+    <i class="screw" style="left:7px;top:7px"></i><i class="screw" style="right:7px;top:7px"></i><i class="screw" style="left:7px;bottom:7px"></i><i class="screw" style="right:7px;bottom:7px"></i>
+  </div></div>
+  <div class="obj pola" data-id="image"><div class="washi" style="left:30%;transform:rotate(4deg)"></div><div class="body"><div class="ph"></div><div class="cap">Image</div></div></div>
+</div></div>
+<div class="card" id="card"></div>
+<div class="pickhint">PICK SOMETHING UP · 1 · 2 · 3</div>
+<script>
+document.getElementById('tag').textContent = SW.tagline;
+document.getElementById('acts').innerHTML = SW.actions.map(([ic, l], i) => `<div class="tag" style="--r:${[-4, 3, -2][i]}deg">${SW.icon(ic, 14)}${l}</div>`).join('');
+const card = document.getElementById('card');
+const idle = () => { card.innerHTML = `<div class="hint">Welcome back.</div>What are we making today?<br><span class="hint">Pick up the film, the tape or the photo.</span>`; card.style.transform = 'rotate(-2deg)'; };
+idle();
+document.querySelectorAll('.obj').forEach(o => {
+  const m = SW.modes.find(x => x.id === o.dataset.id);
+  o.addEventListener('mouseenter', () => {
+    card.innerHTML = `<div class="stamp" style="color:${m.deep}">${m.name}</div>${m.desc}<ul>${m.pts.map(p => `<li>${p}</li>`).join('')}</ul>`;
+    card.style.transform = 'rotate(1deg) translateY(-6px)';
+  });
+  o.addEventListener('mouseleave', idle);
+  o.addEventListener('click', () => SW.choose(m.id));
+});
+SW.keys();
+</script>
+</body>
+</html>

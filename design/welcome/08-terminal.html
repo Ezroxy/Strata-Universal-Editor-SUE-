@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boot Sequence</title>
+<link rel="stylesheet" href="../../css/fonts.css">
+<script src="../../js/core/icons.js"></script>
+<script src="common.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0a0c11; color: #c3cbdb; font: 500 14px/1.65 'JetBrains Mono', 'Cascadia Mono', Consolas, monospace; }
+  body::before { content: ''; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% -10%, rgba(120,140,255,.10), transparent 60%), radial-gradient(ellipse at 100% 100%, rgba(255,120,73,.06), transparent 50%); }
+  .scr { position: fixed; inset: 0 0 34px 0; overflow: hidden; padding: 5vh max(5vw, calc(50vw - 520px)) 0; }
+  .ln { white-space: pre; min-height: 1.65em; }
+  .dim { color: #566074; } .ok { color: #7ee787; } .warn { color: #e3b341; } .acc { color: #9aa8ff; } .wh { color: #eef2fb; font-weight: 700; }
+  .cmd .p { color: #7ee787; } .cmd .pa { color: #9aa8ff; }
+  .cur { display: inline-block; width: .6em; height: 1.15em; vertical-align: -.2em; background: #eef2fb; animation: blink 1.05s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .bar { color: #9aa8ff; }
+  .logo { display: inline-block; margin: 10px 0 2px; font: 600 clamp(11px, 1.08vw, 16px)/1.05 'Cascadia Mono', Consolas, monospace; white-space: pre; background: linear-gradient(90deg, #ff7849 0%, #ffb18a 22%, #35d6b4 45%, #9df2df 58%, #a08aff 78%, #d9d0ff 100%) 0 0 / 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: flow 8s linear infinite; }
+  @keyframes flow { to { background-position: -200% 0; } }
+  .logo .row { display: block; opacity: 0; transform: translateX(-8px); transition: opacity .25s, transform .35s; }
+  .logo .row.in { opacity: 1; transform: none; }
+  .sub { letter-spacing: .5em; color: #8a93a8; }
+  /* menu */
+  .q { margin-top: 6px; }
+  .q b { color: #eef2fb; }
+  .menu { margin: 8px 0 0; }
+  .it { display: flex; gap: 0; cursor: pointer; border-radius: 4px; position: relative; transition: background .15s; padding: 1px 0; }
+  .it .pt { width: 3ch; color: transparent; }
+  .it .k { width: 5ch; color: #566074; }
+  .it .nm { width: 9ch; font-weight: 700; color: #c3cbdb; }
+  .it .ds { color: #6f7a90; }
+  .it.on { background: linear-gradient(90deg, color-mix(in srgb, var(--c) 22%, transparent), transparent 80%); }
+  .it.on .pt { color: var(--c); }
+  .it.on .k { color: var(--c); }
+  .it.on .nm { color: var(--c); }
+  .it.on .ds { color: #c3cbdb; }
+  .det { margin: 10px 0 0 3ch; border-left: 2px solid var(--c, #9aa8ff); padding: 2px 0 2px 2ch; min-height: 7.5em; transition: border-color .2s; }
+  .det .ln { color: #8a93a8; }
+  .det .ln .plus { color: var(--c); }
+  .hidden { display: none; }
+  /* status line */
+  .status { position: fixed; left: 0; right: 0; bottom: 0; height: 34px; display: flex; align-items: stretch; font: 600 12px/34px 'JetBrains Mono'; background: #10131a; border-top: 1px solid #1b2030; }
+  .seg { padding: 0 14px; color: #8a93a8; white-space: nowrap; }
+  .seg.hd { background: #9aa8ff; color: #0a0c11; font-weight: 800; letter-spacing: .08em; }
+  .seg.md { background: var(--c, #1b2030); color: #0a0c11; font-weight: 800; transition: background .2s; }
+  .seg .kb { color: #eef2fb; }
+  .seg.click { cursor: pointer; } .seg.click:hover { background: #1b2030; color: #eef2fb; }
+  .grow { flex: 1; }
+</style>
+</head>
+<body>
+<div class="scr" id="scr"></div>
+<div class="status" id="status">
+  <span class="seg hd">STRATA</span><span class="seg md" id="smode">BOOT</span><span class="seg">~/projects</span><span class="seg ok">● offline-ready</span>
+  <span class="grow"></span>
+  <span class="seg click"><span class="kb">Ctrl O</span> open project</span><span class="seg click"><span class="kb">Ctrl K</span> palette</span><span class="seg click"><span class="kb">?</span> shortcuts</span><span class="seg" id="clock"></span>
+</div>
+<script>
+const scr = document.getElementById('scr'), M = SW.modes;
+const sleep = ms => new Promise(r => setTimeout(r, fast ? Math.min(ms, 4) : ms));
+let fast = false, ready = false, sel = 0;
+const line = (html = '', cls = '') => { const d = document.createElement('div'); d.className = 'ln ' + cls; d.innerHTML = html; scr.append(d); return d; };
+const pad = (s, n, ch = '.') => s + ' ' + ch.repeat(Math.max(2, n - s.length)) + ' ';
+async function type(el, prefix, txt, ms = 38) {
+  for (let i = 0; i <= txt.length; i++) { el.innerHTML = prefix + txt.slice(0, i).replace(/</g, '&lt;') + '<span class="cur"></span>'; await sleep(ms + Math.random() * 30); }
+  el.innerHTML = prefix + txt;
+}
+const PROMPT = '<span class="cmd"><span class="p">you@strata</span> <span class="pa">~</span> <span class="dim">$</span> </span>';
+// "STRATA" in the ANSI Shadow figlet face, assembled letter by letter
+const GL = {
+  S: ['███████╗', '██╔════╝', '███████╗', '╚════██║', '███████║', '╚══════╝'],
+  T: ['████████╗', '╚══██╔══╝', '   ██║   ', '   ██║   ', '   ██║   ', '   ╚═╝   '],
+  R: ['██████╗ ', '██╔══██╗', '██████╔╝', '██╔══██╗', '██║  ██║', '╚═╝  ╚═╝'],
+  A: [' █████╗ ', '██╔══██╗', '███████║', '██╔══██║', '██║  ██║', '╚═╝  ╚═╝'],
+};
+const LOGO = [0, 1, 2, 3, 4, 5].map(r => [...'STRATA'].map(ch => GL[ch][r]).join(''));
+
+async function boot() {
+  await type(line(), PROMPT, 'strata --welcome');
+  await sleep(260);
+  line('<span class="dim">Strata Studio · starting up</span>');
+  await sleep(180);
+  const checks = [
+    ['video engine', 'timeline, effects, titles, export'],
+    ['audio engine', '48 kHz · live recording · 25+ effects'],
+    ['image engine', 'layers, Camera Raw, Liquify, 70+ filters'],
+    ['captions', 'speech model runs on this computer'],
+    ['projects', 'autosave on · undo history kept'],
+    ['network', 'not needed — nothing gets uploaded'],
+  ];
+  for (const [k, v] of checks) {
+    const l = line(`<span class="dim">[    ]</span> ${pad(k, 16)}`);
+    await sleep(110 + Math.random() * 140);
+    l.innerHTML = `<span class="dim">[</span> <span class="ok">ok</span> <span class="dim">]</span> ${pad(k, 16).replace(/(\.+)/, '<span class="dim">$1</span>')}<span class="wh">${v}</span>`;
+  }
+  const bar = line('', 'bar'), N = 38;
+  for (let i = 0; i <= N; i++) { bar.innerHTML = `<span class="dim">loading workspace</span> [${'█'.repeat(i)}<span class="dim">${'░'.repeat(N - i)}</span>] ${String(Math.round(i / N * 100)).padStart(3)}%`; await sleep(14); }
+  await sleep(200);
+  const lg = document.createElement('div'); lg.className = 'logo';
+  lg.innerHTML = LOGO.map(r => `<span class="row">${r}</span>`).join('');
+  scr.append(lg);
+  for (const r of lg.children) { await sleep(70); r.classList.add('in'); }
+  line(`<span class="sub">S T U D I O</span>   <span class="dim">— ${SW.tagline}</span>`);
+  line();
+  menu();
+}
+
+let items = [], det, smode = document.getElementById('smode');
+function menu() {
+  line(`<span class="acc">?</span> <b class="wh">What would you like to make today?</b>  <span class="dim">↑ ↓ to move · Enter to open · or press 1 2 3</span>`, 'q');
+  const box = document.createElement('div'); box.className = 'menu'; scr.append(box);
+  items = M.map((m, i) => {
+    const it = document.createElement('div'); it.className = 'it'; it.style.setProperty('--c', m.color);
+    it.innerHTML = `<span class="pt">❯</span><span class="k">[${m.key}]</span><span class="nm">${m.name}</span><span class="ds">${m.desc}</span>`;
+    it.onmouseenter = () => select(i);
+    it.onclick = () => launch(i);
+    box.append(it); return it;
+  });
+  det = document.createElement('div'); det.className = 'det'; scr.append(det);
+  ready = true; select(0, true);
+}
+let detTok = 0;
+async function select(i, force) {
+  if (!ready || (i === sel && !force)) return;
+  sel = i; const m = M[i];
+  items.forEach((it, k) => it.classList.toggle('on', k === i));
+  det.style.setProperty('--c', m.color);
+  smode.textContent = m.name.toUpperCase(); smode.style.setProperty('--c', m.color);
+  const tok = ++detTok; det.innerHTML = '';
+  const head = line(`<span class="dim"># what's inside ${m.name.toLowerCase()}</span>`); det.append(head);
+  for (const p of m.pts) { await new Promise(r => setTimeout(r, 55)); if (tok !== detTok) return; const l = line(`<span class="plus">+</span> ${p}`); det.append(l); }
+}
+let launching = false;
+async function launch(i) {
+  if (!ready || launching) return;
+  launching = true; select(i);
+  const m = M[i];
+  det.classList.add('hidden');
+  const l = line(); await type(l, PROMPT, `strata open ${m.id}`, 22);
+  const s = line(`<span class="dim">→ opening the</span> <span style="color:${m.color};font-weight:700">${m.name}</span> <span class="dim">editor</span><span class="cur"></span>`);
+  SW.choose(m.id);
+  setTimeout(() => { l.remove(); s.remove(); det.classList.remove('hidden'); launching = false; }, 1700);
+}
+addEventListener('keydown', e => {
+  if (!ready) { fast = true; return; }
+  if (e.key === 'ArrowDown') { select((sel + 1) % 3); e.preventDefault(); }
+  else if (e.key === 'ArrowUp') { select((sel + 2) % 3); e.preventDefault(); }
+  else if (e.key === 'Enter') launch(sel);
+  else { const k = M.findIndex(m => m.key === e.key); if (k >= 0) launch(k); }
+});
+addEventListener('pointerdown', () => { if (!ready) fast = true; });
+const clock = () => { const d = new Date(); document.getElementById('clock').textContent = d.toTimeString().slice(0, 5); };
+clock(); setInterval(clock, 10000);
+boot();
+</script>
+</body>
+</html>
