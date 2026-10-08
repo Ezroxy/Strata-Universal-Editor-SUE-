@@ -384,7 +384,7 @@ A.updateLive = () => {
   for (const n of nodes) { n.g.gain.value = (n.tr.mute || (solo && !n.tr.solo)) ? 0 : App.dbToGain(n.tr.gain); n.p.pan.value = n.tr.pan; }
 };
 A.play = (from) => {
-  if (!A.tracks.length) return;
+  if (!A.tracks.length || App.active !== 'audio') return;   // only the editor on screen plays; the Video editor has its own transport
   const d = A.duration();
   let t0, tEnd;
   if (from != null) { t0 = from; tEnd = d; }
