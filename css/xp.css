@@ -92,6 +92,7 @@ html[data-theme="xp"] #topbar .tab.on { background: linear-gradient(180deg, #1a4
 html[data-theme="xp"] #topbar .tab .dot, html[data-theme="xp"] #topbar .tab.on .dot { width: 16px; height: 16px; border-radius: 0; opacity: 1; background: var(--xpi-video) center / 16px no-repeat; box-shadow: none !important; transform: none !important; }
 html[data-theme="xp"] #topbar .tab[data-mode="audio"] .dot { background-image: var(--xpi-audio); }
 html[data-theme="xp"] #topbar .tab[data-mode="image"] .dot { background-image: var(--xpi-image); }
+html[data-theme="xp"] #topbar .tab[data-mode="convert"] .dot { background-image: var(--xpi-convert); }
 html[data-theme="xp"] #topbar .tab .lbl { font-size: 0; min-width: 0; overflow: hidden; }
 html[data-theme="xp"] #topbar .tab .lbl::after { content: attr(data-xp); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 /* notification area */

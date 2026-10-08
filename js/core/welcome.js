@@ -29,6 +29,8 @@ const ACTIONS = [
   { id: 'palette', icon: 'command', label: 'Command palette', short: 'Commands', key: 'Ctrl+K', tip: 'Find and run any command by typing its name.' },
   { id: 'shortcuts', icon: 'keyboard', label: 'Shortcuts', short: 'Keys', key: '?', tip: 'Every keyboard shortcut for the editor, in one list.' },
   { id: 'prefs', icon: 'settings', label: 'Preferences', short: 'Settings', key: 'Ctrl+,', tip: 'Themes, sounds, fonts, explainers, autosave and editor defaults.' },
+  // (new actions go at the end: some screens pick actions by position)
+  { id: 'convert', icon: 'convert', label: 'Convert files…', short: 'Convert', key: 'Alt+4', tip: 'The universal converter: turn any video, sound, picture or subtitle file into another format (MKV → MP4, MP4 → MP3, FLAC → WAV, HEIC → PNG…) at full quality.' },
 ];
 App.WELCOME_MODES = MODES;
 
@@ -145,7 +147,7 @@ function run(id) {
   const c = current;
   if (!c || c.leaving) return;
   close();
-  const go = { open: () => App.openProjectFile(), palette: () => App.openPalette && App.openPalette(), shortcuts: () => App.showShortcuts && App.showShortcuts(), prefs: () => App.showPrefs && App.showPrefs(), prefsLook: () => App.showPrefs && App.showPrefs('appearance') }[id];
+  const go = { open: () => App.openProjectFile(), convert: () => App.setMode('convert'), palette: () => App.openPalette && App.openPalette(), shortcuts: () => App.showShortcuts && App.showShortcuts(), prefs: () => App.showPrefs && App.showPrefs(), prefsLook: () => App.showPrefs && App.showPrefs('appearance') }[id];
   go && setTimeout(go, 60);
 }
 function close() {

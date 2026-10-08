@@ -168,4 +168,6 @@ App.ICONS = {
   feather: '<path d="M20 4c-8 0-14 6-14 14l-2 2"/><path d="M20 4c0 6-4 11-10 12M15 9H9"/>',
   text2: '<path d="M4 7V5h16v2M12 5v14M9 19h6"/><path d="M18 14l3 3-3 3" stroke-opacity=".6"/>',
   captions: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10.5 10.2a2.2 2.2 0 1 0 0 3.6M17 10.2a2.2 2.2 0 1 0 0 3.6"/>',
+  convert: '<path d="M4 7h11"/><path d="M12 4l3 3-3 3"/><path d="M20 17H9"/><path d="M12 14l-3 3 3 3"/><circle cx="19" cy="7" r="1.6" fill="currentColor" stroke="none"/><circle cx="5" cy="17" r="1.6" fill="currentColor" stroke="none"/>',
+  fileAny: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 14h6M9 17h4"/>',
 };

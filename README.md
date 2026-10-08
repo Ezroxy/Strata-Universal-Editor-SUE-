@@ -2,7 +2,7 @@
 
 This is an extremely lightweight universal editor that combines image editing, video editing, and audio editing.
 
-A video, audio and image editor that runs in your browser. Nothing to install: it's plain HTML/CSS/JS, and your files never leave your computer — even the speech-recognition model behind Auto captions runs locally.
+A video, audio and image editor — plus a universal file converter — that runs in your browser. Nothing to install: it's plain HTML/CSS/JS, and your files never leave your computer — even the speech-recognition model behind Auto captions runs locally.
 
 Every button, slider and menu item shows a small explainer bubble when you hover over it. You can turn the bubbles off, or change how quickly they appear, with the **Tips** button or in **Preferences** (Ctrl+,). Press **?** in any tab to see its keyboard shortcuts, and **Ctrl+K** to open the command palette and search every command in the current tab.
 
@@ -27,7 +27,7 @@ Chrome or Edge is recommended. They support fast MP4 export (WebCodecs) and ever
 
 ## Themes, sounds and preferences
 - **15 themes**, switchable from the palette button in the top bar or **Preferences ▸ Appearance** (with live previews): Strata Dark and Light, Frutiger Aero, Windows XP Dreamcore, Skeuomorphic Studio, Midnight OLED, Synthwave, Terminal, Nord Frost, Paper & Ink, Classic 98, Pastel Pop, Film Noir, Grove Street and High Contrast.
-- **A welcome screen for every theme**, shown each time Strata starts (turn it off with its "Show at startup" switch or in Preferences ▸ Interface): rock layers that settle in (Strata Dark), live previews in a bento grid (Light), glossy bubbles over a green hill (Frutiger Aero), a dreamlike XP desktop with a giant 3D dialog (Windows XP Dreamcore), a hardware console with VU meters and a rotary selector (Skeuomorphic), planets orbiting a particle logo (Midnight OLED), a neon outrun sunset (Synthwave), a CRT boot sequence (Terminal), an aurora over snowy peaks (Nord Frost), a newspaper front page (Paper & Ink), a Windows 98 desktop with a Start menu (Classic 98), clay slabs in 3D (Pastel Pop), opening titles in the rain (Film Noir), a San Andreas style menu (Grove Street) and a bold typographic poster (High Contrast). Press 1, 2 or 3 to open an editor, Esc to skip.
+- **A welcome screen for every theme**, shown each time Strata starts (turn it off with its "Show at startup" switch or in Preferences ▸ Interface): rock layers that settle in (Strata Dark), live previews in a bento grid (Light), glossy bubbles over a green hill (Frutiger Aero), a dreamlike XP desktop with a giant 3D dialog (Windows XP Dreamcore), a hardware console with VU meters and a rotary selector (Skeuomorphic), planets orbiting a particle logo (Midnight OLED), a neon outrun sunset (Synthwave), a CRT boot sequence (Terminal), an aurora over snowy peaks (Nord Frost), a newspaper front page (Paper & Ink), a Windows 98 desktop with a Start menu (Classic 98), clay slabs in 3D (Pastel Pop), opening titles in the rain (Film Noir), a San Andreas style menu (Grove Street) and a bold typographic poster (High Contrast). Press 1, 2 or 3 to open an editor, Esc to skip; every screen also has a way into the Converter.
 - **UI sounds:** every theme has its own subtle sound pack (15 packs, all synthesized live, no audio files). Choose a pack, the volume and which kinds of actions make a sound, or turn them off. They stay quiet while your media plays.
 - **Windows XP Dreamcore** turns Strata into the XP desktop you remember from a dream: an endless green hill with drifting clouds, every panel a chunky striped 3D window whose title-bar buttons work (maximize a window, hide side panels; the main window's buttons show the desktop, tighten the layout or open Turn Off Computer), a taskbar with a Start menu and clock, yellow balloon tips, big XP cursors and a slowed-down "Dream" sound pack.
 - **Interface size:** make everything bigger or smaller, from 50% to 200%, under **View ▸ Interface size** in any editor, in **Preferences ▸ Appearance**, or with **Ctrl+Alt+=** / **Ctrl+Alt+-** (**Ctrl+Alt+0** goes back to 100%).
@@ -117,6 +117,16 @@ Chrome or Edge is recommended. They support fast MP4 export (WebCodecs) and ever
 - Crop with aspect-ratio presets, straighten, resize, canvas size, rotate and flip. View options include a grid, rulers and a pixel grid when zoomed in. The status bar shows the color under the cursor. The History panel lets you click back to any earlier step.
 - Export as PNG, JPEG or WebP with quality and scale settings, or copy the finished image to the clipboard.
 
+## Convert tab
+A universal file converter (**Alt+4**, or *Convert files…* in any editor's File menu, the welcome screen or the command palette). Drop in any video, sound, picture or subtitle file and get it back in another format: MKV → MP4, MP4 → MP3, MOV → GIF, FLAC → WAV, WAV → MP3, AVI → MP4, PNG → JPEG, AVIF/SVG → PNG, MKV → SRT and hundreds more combinations. It runs FFmpeg on your own computer (nothing is uploaded).
+
+- **Reads almost anything:** hundreds of containers and codecs (MKV, MP4, MOV, AVI, WMV, FLV, TS/MTS, WebM, MP3, FLAC, WAV, AAC, AC3, DTS, Opus, OGG, WMA, PNG, JPEG, WebP, TIFF, BMP, GIF, SRT, ASS…). Pictures FFmpeg can't open (AVIF, SVG) are decoded by the browser first.
+- **Writes:** video MP4, MKV, MOV, WebM, AVI, WMV, FLV, TS, MPEG-2, OGV and animated GIF · audio MP3, AAC, ALAC, FLAC, WAV, AIFF, OGG, Opus, WMA, AC3, or the original sound pulled out untouched · pictures PNG, JPEG, WebP, GIF, BMP, TIFF, ICO, TGA · subtitles SRT, VTT, ASS.
+- **Full quality:** at *Best*, every stream the new format can hold is copied exactly as it is (no loss, and usually done in a second or two, e.g. MKV → MP4). Only what doesn't fit is re-encoded, at the highest settings (H.264 CRF 16, AAC/MP3 320 kbps…). Lossless targets keep the source's bit depth. The panel on the right shows exactly what will happen ("Copy the H.264 video as it is — no quality loss") and a size estimate.
+- **Settings per file:** quality (Best / High / Balanced / Small), video codec (H.264, H.265, ProRes), resolution, frame rate, which sound tracks and subtitles to keep, bitrate, sample rate, channels, bit depth, loudness evening (−14 LUFS), trimming, keeping or stripping tags, the frame to grab from a video, the picture for a sound-only video (animated waveform, spectrum, black or your own image), and GIF size and speed. *Make default* remembers them for new files.
+- **A queue:** add many files and convert them all, one after another, while you keep working in the other tabs (the Convert tab shows its progress). Each result can be downloaded, saved automatically, packed into a ZIP with the others, opened in the Video, Audio or Image editor, or dragged onto their tabs. Things from the editors can come in too: the Video media bin (right-click ▸ *Convert to another format…*), the Audio editor's mix and the Image editor's picture.
+- **Limits:** each result is built in memory, so it can be up to about 2 GB. WebM is written with VP8 video. Long video re-encodes run at roughly real time for HD (copies are instant). A trimmed copy leaves subtitles out (FFmpeg can't keep their timing exact across a cut); convert the whole file, or save them as SRT, to keep them.
+
 ## Project layout
 ```
 index.html          app shell
@@ -134,6 +144,9 @@ models/whisper-base OpenAI Whisper base (8-bit) used by Auto captions
 js/audio/           effect definitions and the editor
 js/image/           filters (incl. healing), tools, the editor, Photoshop-style filters, Liquify,
                     Filter Gallery and Camera Raw (+ its render worker)
+js/convert/         the Convert tab: formats + planner, engine host, the ffmpeg worker, the workspace
+css/convert.css     the Convert tab's styles (and its colour in every theme)
+vendor/ffmpeg/      FFmpeg compiled to WebAssembly (multi-threaded; GPL, see its README)
 fonts/              bundled web fonts (so everything works offline)
 desktop/            native Windows launcher (Rust + WebView2) → build-desktop.bat → dist\
 server.js           zero-dependency static server

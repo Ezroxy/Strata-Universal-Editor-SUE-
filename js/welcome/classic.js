@@ -12,6 +12,7 @@ const ICONS = {
   image: px([[3, 5, 26, 21, '#000'], [4, 6, 24, 19, '#fff'], [4, 6, 24, 9, '#7dd3fc'], [20, 8, 4, 4, '#fde047'], [4, 15, 24, 10, '#22c55e'], [4, 19, 24, 6, '#15803d'], [9, 12, 2, 3, '#14532d'], [8, 14, 4, 2, '#14532d'], [20, 18, 2, 10, '#000'], [21, 18, 1, 8, '#a16207'], [19, 26, 4, 3, '#000'], [20, 26, 2, 2, '#dc2626'], [24, 21, 6, 5, '#000'], [25, 22, 4, 3, '#a855f7']]),
   keys: px([[2, 9, 28, 15, '#000'], [3, 10, 26, 13, '#c0c0c0'], [3, 10, 26, 1, '#fff'], [5, 12, 3, 3, '#fff'], [9, 12, 3, 3, '#fff'], [13, 12, 3, 3, '#fff'], [17, 12, 3, 3, '#fff'], [21, 12, 3, 3, '#fff'], [25, 12, 2, 3, '#fff'], [5, 16, 3, 3, '#fff'], [9, 16, 14, 3, '#fff'], [24, 16, 3, 3, '#fff'], [5, 20, 22, 1, '#808080']]),
   dos: px([[2, 5, 28, 22, '#000'], [3, 6, 26, 3, '#000080'], [3, 9, 26, 17, '#000'], [5, 12, 2, 2, '#c0c0c0'], [8, 12, 2, 2, '#c0c0c0'], [11, 12, 4, 2, '#c0c0c0'], [16, 12, 4, 2, '#c0c0c0'], [5, 17, 2, 2, '#c0c0c0'], [8, 18, 4, 1, '#c0c0c0']]),
+  convert: px([[2, 4, 12, 16, '#000'], [3, 5, 10, 14, '#fff'], [10, 5, 3, 3, '#c0c0c0'], [5, 9, 6, 1, '#000080'], [5, 12, 6, 1, '#000080'], [18, 12, 12, 16, '#000'], [19, 13, 10, 14, '#fff'], [26, 13, 3, 3, '#c0c0c0'], [21, 17, 6, 1, '#808000'], [21, 20, 6, 1, '#808000'], [21, 23, 4, 1, '#808000'], [14, 7, 6, 2, '#000'], [18, 5, 2, 6, '#000'], [20, 7, 1, 2, '#000'], [12, 22, 6, 2, '#000'], [12, 20, 2, 6, '#000'], [11, 22, 1, 2, '#000']]),
   power: px([[6, 6, 20, 20, '#000'], [7, 7, 18, 18, '#c0c0c0'], [15, 9, 2, 8, '#b91c1c'], [11, 12, 2, 8, '#b91c1c'], [19, 12, 2, 8, '#b91c1c'], [12, 20, 8, 2, '#b91c1c'], [12, 11, 2, 2, '#b91c1c'], [18, 11, 2, 2, '#b91c1c']]),
 };
 const SM = s => s.replace(/width="32" height="32"/, 'width="16" height="16"');
@@ -77,6 +78,7 @@ App.WELCOMES.classic = {
     const ITEMS = [
       ...M.map(m => ({ pick: m.id, icon: ICONS[m.id], label: m.name + ' editor', title: m.name, desc: m.desc, pts: m.pts, tip: m.tip, key: m.key })),
       { act: 'open', icon: ICONS.folder, label: 'Open a project', title: 'Open a project', desc: 'Load a .strata project file you saved earlier. It brings back the timeline, tracks or layers exactly as you left them.', pts: ['Works with files from all three editors', 'You can also drop a file onto the window'], tip: api.actions[0].tip },
+      { act: 'convert', icon: ICONS.convert, label: 'File converter', title: 'File converter', desc: 'Turn any video, sound, picture or subtitle file into another format, at full quality: MKV to MP4, MP4 to MP3, FLAC to WAV, PNG to JPEG and hundreds more.', pts: ['Copies streams untouched when it can (no loss)', 'Everything stays on this computer'], tip: api.actions[4].tip, key: 'Alt+4' },
       { act: 'shortcuts', icon: ICONS.keys, label: 'Keyboard shortcuts', title: 'Keyboard shortcuts', desc: 'Every keyboard shortcut for the editor you are in, in one searchable list.', pts: ['Press ? any time to see it again', 'Ctrl+K finds any command by name'], tip: api.actions[2].tip, key: '?' },
     ];
     const logo = api.logo(40, M.map(m => m.color === '#000080' ? '#1084d0' : m.color));
@@ -100,7 +102,7 @@ App.WELCOMES.classic = {
       </div>
       <div class="w9-menu"><div class="w9-band"><span><b>Strata</b>98</span></div><div class="w9-mi">
         ${M.map(m => `<button data-pick="${m.id}"${api.tip(m.name + ' editor', m.tip, m.key)}>${ICONS[m.id]}${m.name}</button>`).join('')}<hr>
-        ${api.actions.map(a => `<button data-act="${a.id}"${api.tip(a.label, a.tip, a.key)}>${SM(ICONS[{ open: 'folder', palette: 'dos', shortcuts: 'keys', prefs: 'folder' }[a.id]]).replace('width="16" height="16"', 'width="24" height="24"')}${a.label}</button>`).join('')}<hr>
+        ${api.actions.map(a => `<button data-act="${a.id}"${api.tip(a.label, a.tip, a.key)}>${SM(ICONS[{ open: 'folder', palette: 'dos', shortcuts: 'keys', prefs: 'folder', convert: 'convert' }[a.id]] || ICONS.folder).replace('width="16" height="16"', 'width="24" height="24"')}${a.label}</button>`).join('')}<hr>
         <button data-act="close"${api.tip('Shut Down', 'Close the welcome screen and go to Strata Studio.', 'Esc')}>${ICONS.power}Shut Down…</button></div></div>
       <div class="w9-task">
         <button class="w9-start"${api.tip('Start', 'Open the Start menu: editors, projects, commands and settings.')}>${api.logo(16, M.map(m => m.color === '#000080' ? '#1084d0' : m.color))}Start</button>

@@ -7,6 +7,7 @@ const MODES = [
   { id: 'video', label: 'Video', key: 'Alt+1', icon: 'film', tip: 'Multitrack video editor: cut, trim, layer, animate, add titles, transitions and color, then export.' },
   { id: 'audio', label: 'Audio', key: 'Alt+2', icon: 'wave', tip: 'Multitrack audio editor: record, cut, clean up noise, EQ, effects, loudness and mastering.' },
   { id: 'image', label: 'Image', key: 'Alt+3', icon: 'image', tip: 'Layered photo editor with paint tools, selections, masks, adjustments and filters.' },
+  { id: 'convert', label: 'Convert', key: 'Alt+4', icon: 'convert', tip: 'Universal file converter: turn any video, sound, picture or subtitle file into another format (MKV → MP4, MP4 → MP3, FLAC → WAV, PNG → JPEG…) at full quality, right on this computer.' },
 ];
 const inited = {};
 App.active = null;
@@ -41,6 +42,7 @@ function buildTopbar() {
 }
 function updatePill() {
   if (!savePill) return;
+  savePill.style.display = App.active === 'convert' ? 'none' : '';   // the converter keeps nothing to save
   const s = App.saveState[App.active] || 'saved';
   savePill.className = 'save-pill ' + s;
   savePill.lastChild.textContent = !App.settings.autosave ? 'Autosave off' : { dirty: 'Unsaved changes', saving: 'Saving…', saved: 'All changes saved', error: 'Save failed' }[s];
@@ -78,7 +80,8 @@ App.setMode = id => {
 /* ---------- command palette ---------- */
 function globalCommands() {
   return [
-    ...MODES.map(m => ({ label: `Go to ${m.label} editor`, group: 'Navigate', icon: m.icon, key: m.key, tip: m.tip, action: () => App.setMode(m.id) })),
+    ...MODES.map(m => ({ label: m.id === 'convert' ? 'Go to the Converter' : `Go to ${m.label} editor`, group: 'Navigate', icon: m.icon, key: m.key, tip: m.tip, action: () => App.setMode(m.id) })),
+    { label: 'Convert files…', group: 'File', icon: 'convert', tip: 'Turn any video, sound, picture or subtitle file into another format (MKV → MP4, MP4 → MP3, WAV → FLAC…).', action: () => { App.setMode('convert'); App.Conv && App.Conv.addFiles(); } },
     { label: 'Open project file', group: 'File', icon: 'folder', tip: 'Open a .strata project saved from any editor.', action: () => App.openProjectFile() },
     { label: 'Preferences', group: 'App', icon: 'settings', key: 'Ctrl+,', tip: 'Themes, sounds, fonts, explainers, autosave and editor defaults.', action: () => showSettings() },
     { label: 'Change theme…', group: 'App', icon: 'theme', tip: 'Pick one of the 15 themes with live previews.', action: () => showSettings('appearance') },
@@ -96,7 +99,7 @@ const openPalette = () => App.commandPalette(globalCommands());
 function showShortcuts() {
   const mod = App.modules[App.active];
   const grid = h('div', { class: 'shortcut-grid' });
-  const groups = [...(mod && mod.shortcuts || []), ['Global', [['Ctrl + K', 'Command palette'], ['Alt + 1 / 2 / 3', 'Switch to Video / Audio / Image'], ['Ctrl + ,', 'Settings'], ['Ctrl + Alt + = / - / 0', 'Interface bigger / smaller / 100%'], ['?', 'This list']]]];
+  const groups = [...(mod && mod.shortcuts || []), ['Global', [['Ctrl + K', 'Command palette'], ['Alt + 1 / 2 / 3 / 4', 'Switch to Video / Audio / Image / Convert'], ['Ctrl + ,', 'Settings'], ['Ctrl + Alt + = / - / 0', 'Interface bigger / smaller / 100%'], ['?', 'This list']]]];
   const search = h('input', { class: 'field wide', placeholder: 'Filter shortcuts…', style: { height: '32px', fontSize: '12px', fontFamily: 'var(--font)' } });
   const render = () => {
     const q = search.value.toLowerCase();
@@ -111,7 +114,7 @@ function showShortcuts() {
   search.addEventListener('input', render);
   search.addEventListener('keydown', e => e.stopPropagation());
   render();
-  App.modal({ title: `${App.active[0].toUpperCase() + App.active.slice(1)} editor shortcuts`, icon: 'keyboard', width: 660, body: h('div', null, h('div', { style: { padding: '0 18px 4px' } }, search), grid) });
+  App.modal({ title: App.active === 'convert' ? 'Converter shortcuts' : `${App.active[0].toUpperCase() + App.active.slice(1)} editor shortcuts`, icon: 'keyboard', width: 660, body: h('div', null, h('div', { style: { padding: '0 18px 4px' } }, search), grid) });
 }
 App.showShortcuts = showShortcuts;
 
@@ -140,7 +143,7 @@ document.addEventListener('keydown', e => {
   if (App.modalCount > 0) return;
   if (App.isTyping(e.target)) return;
   if (e.target.matches && e.target.matches('input[type=range]') && /^(arrow|page|home|end)/i.test(e.key)) return;
-  if (e.altKey && ['1', '2', '3'].includes(e.key)) { e.preventDefault(); App.setMode(MODES[+e.key - 1].id); return; }
+  if (e.altKey && ['1', '2', '3', '4'].includes(e.key)) { e.preventDefault(); App.setMode(MODES[+e.key - 1].id); return; }
   if ((e.ctrlKey || e.metaKey) && e.key === ',') { e.preventDefault(); showSettings(); return; }
   if (e.key === '?') { e.preventDefault(); showShortcuts(); return; }
   const mod = App.modules[App.active];

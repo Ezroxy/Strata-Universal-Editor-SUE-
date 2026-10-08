@@ -84,7 +84,7 @@ App.WELCOMES.skeuo = {
       ${Array.from({ length: 11 }, (_, k) => { const a = (-48 + k * 9.6) * Math.PI / 180, r1 = 72, r2 = k % 2 ? 66 : 62; return `<path d="M${85 + Math.sin(a) * r1} ${106 - Math.cos(a) * r1} L${85 + Math.sin(a) * r2} ${106 - Math.cos(a) * r2}" ${k > 7 ? 'stroke="#c0281a"' : ''}/>`; }).join('')}</g>
       <text x="85" y="62" text-anchor="middle" font-family="Georgia, serif" font-size="13" font-style="italic" fill="#2b2620">VU</text>
       <text x="20" y="88" font-family="Segoe UI" font-size="7" fill="#2b2620">-20</text><text x="138" y="88" font-family="Segoe UI" font-size="7" fill="#c0281a">+3</text></svg>`;
-    const SW = [['open', 'OPEN'], ['palette', 'CMD'], ['shortcuts', 'KEYS'], ['prefs', 'PREFS']];
+    const SW = [['open', 'OPEN'], ['convert', 'CONV'], ['palette', 'CMD'], ['shortcuts', 'KEYS'], ['prefs', 'PREFS']];
     root.innerHTML = `
       <div class="wk-emboss">Strata Studio<small>Hand-built in layers</small></div>
       <div class="wk-plate">${screws}

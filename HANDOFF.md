@@ -46,6 +46,9 @@ model behind Auto captions. You can use it in the browser or as a native Windows
   - Healing brush, clone, content-aware fill and remove background.
   - Text with outline, shadow, letter / line spacing and style presets.
 - **Drag and drop between the three editors:** audio → video, image → video, frames → image, and more.
+- **Convert tab (universal file converter, Alt+4):** any video / audio / picture / subtitle file to another format with FFmpeg
+  (WebAssembly) running locally; lossless stream copies where possible, a queue, per-file settings, ZIP download, hand-off
+  to the editors, styled by all 15 themes and integrated in every welcome screen and the XP shell.
 - **15 themes, each with its own animated welcome screen:**
   - Themes: Terminal, Frutiger Aero, Windows XP, Windows 98, Paper, Film Noir, Synthwave, Grove Street and more.
   - Each theme has synthesized UI sounds.
@@ -62,8 +65,8 @@ model behind Auto captions. You can use it in the browser or as a native Windows
   - Autosave is flushed when the window closes.
 
 ### In progress
-- Nothing is half-done. The last task (three video-playback bugs, see "Latest request" below) is finished and tested in
-  headless Chromium. **The Windows exe has not been rebuilt since** (the work was done in a Linux cloud session), so run
+- Nothing is half-done. The last task (the Convert tab, plus a timeline scroll fix — see "Latest request" below) is
+  finished and tested in headless Chromium. **The Windows exe has not been rebuilt since** (the work was done in a Linux cloud session), so run
   `build-desktop.bat` once on Windows.
 - `qa/harness.js` is a temporary QA script that runs every menu command in the browser preview. It isn't part of the app.
 
@@ -197,7 +200,72 @@ speech-to-text model for auto-captioning videos." The user picked **Whisper Base
 - Exe: smoke-tested after the user closed their copy (live recording via the blob-URL AudioWorklet works under COEP; the xfer
   receivers are registered). The parked old build in `%TEMP%\claude\old-builds\` was deleted. The Desktop exe is current.
 
-## Latest request — DONE (2026-10-08, cloud session): three playback bugs
+## Latest request — DONE (2026-10-08, cloud session): universal file converter + timeline scroll fix
+User: "a universal file converter where I can convert anything to anything, like MKV to MP3 or vice versa … at full
+quality … well integrated … go with all the themes … do two rounds of QA". Mid-way: "when I place or move a sound effect on
+a lower audio track, the video timeline snaps back up to the video tracks".
+
+### Engine (`vendor/ffmpeg/`, `js/convert/ffworker.js`, `js/convert/engine.js`)
+- `@ffmpeg/core-mt` 0.12.10 (FFmpeg 5.1, GPL — see `vendor/ffmpeg/README.md`, incl. one patched line in `ffmpeg-core.js`).
+  Needs cross-origin isolation (server.js and the desktop app already send COOP/COEP). Only the multi-threaded build is
+  shipped: 2.5× faster than the single-threaded one for H.264.
+- Own module worker instead of `@ffmpeg/ffmpeg`: inputs are mounted with WORKERFS under safe names (`in0.mkv` — real
+  names with `%03d` would be read as patterns), so input size is unlimited; outputs live in MEMFS (JS ArrayBuffers, not the
+  fixed 1 GB wasm heap): ~1.5–2 GB per output is the practical limit.
+- `engine.js` runs two workers: `conv` (conversions) and `info` (ffprobe + thumbnails), each shut down after 3 idle minutes.
+  A failed run restarts the worker (clean state). Cancel = terminate.
+- Build quirks found by QA and worked around:
+  - `-threads` must be explicit and ≤ 4 (auto/8 throws Emscripten's `unwind`).
+  - libvpx-vp9 hangs (WebM uses VP8); libopus crashes the whole tab on stereo/surround (ffmpeg's native `opus` encoder
+    with `-strict -2` instead); `showspectrumpic` takes minutes (the spectrogram-picture option was removed).
+  - **A worker locks up for good on about its 66th run** (any command, any thread setting): `engine.js` replaces each
+    worker after `MAX_RUNS` = 20 runs. This was the cause of the "random" stalls and of a frozen 87-run test session.
+  - `-update 1` is only for the image2 writer (GIF/ICO reject it), and a non-zero exit code now always means failure
+    (ffmpeg used to leave a 4-byte "icon" behind).
+- Safety nets in `index.js`: a watchdog fails a run after 90 s without any ffmpeg output and retries it once on a fresh
+  engine; a probe gets 45 s and one retry.
+
+### Planner (`js/convert/formats.js`, pure logic)
+- `CV.formats` catalogue (kind, extension, default encoders, which codecs each container can copy), `CV.summarize(probe)`
+  (kind detection: video / audio / image / animation / subtitles, streams, cover art, start times), `CV.allowed(S, f)`
+  (with the reason shown on disabled tiles), `CV.plan(item)` → ffmpeg args + human-readable steps + lossless level +
+  warnings + expected frames (progress for re-encoded video is counted in frames: ffmpeg's `time=` follows the fastest
+  stream), `CV.estimate`.
+- Per-track audio options must use `:a:N` for generic options (`-ar:a:0`); `-ar:0` means stream 0 (usually the video) —
+  that was a real bug (loudness evening produced 96 kHz).
+- Extracted subtitles are shifted by `format.start_time − video.start_time` so they stay in sync with the picture.
+- Trimmed copies leave subtitles out (with a warning): FFmpeg mistimes them across a cut, with input-side or output-side
+  `-ss` alike (checked with the system FFmpeg 6.1 too).
+- Pictures → video get the even-size scale too (x264 rejects 333×211).
+
+### Workspace (`js/convert/index.js`, `css/convert.css`)
+- Fourth module `App.modules.convert` (`#mod-convert`, panels `c-top` / `c-queue` / `c-side` / `c-foot`), tab + Alt+4 in
+  `main.js`, `--convert` colour per theme in `convert.css`, XP shell entries (Start menu, desktop icon, window titles,
+  taskbar icon `--xpi-convert`), a `convert` action on every welcome screen (appended LAST to `ACTIONS`: some screens read
+  actions by index), "Convert files…" in each editor's File menu and the palette, media bin "Convert to another format…",
+  `App.xfer.receivers.convert`, Preferences ▸ Start in ▸ Convert.
+- State in `App.Conv` (items, selection, running job). Settings that persist: `localStorage['strata.cv']` (defaults per
+  source kind, auto-save) and `strata.cv.noside`.
+
+### Timeline scroll fix (`js/video/timeline.js`)
+- `T.render()` empties and rebuilds the track rows; the browser clamped the vertical scroll to the top during that, so
+  every edit (moving or placing a clip on a lower audio track) jumped the view back to the video tracks. `T.render` now
+  restores `scrollTop` / `scrollLeft`.
+
+### Tested (headless Chromium)
+- Round 1: a 95-case conversion matrix (every target from MKV/H.264+AAC+SRT, HEVC+AC3 5.1, MP3, 96 kHz FLAC, WAV, PNG,
+  RGBA PNG, JPEG, animated GIF, AVI, MOV, VP9 WebM, odd-sized video, a `%03d` file name, SVG, AVIF), each output checked
+  with the system ffprobe (codecs, size, duration, sample rate, channels, tag) and fully decoded; real-mouse UI tests; all
+  15 themes and welcome screens; 150 % size and a 1024×700 window. Bugs fixed: see the PR / commit message.
+- Round 2: the full matrix again plus 26 new cases (cover art kept/stripped, a two-language MKV incl. picking the French
+  track, 24-bit WAV → FLAC/ALAC keeping 24 bits, a 2-minute file, a real 333×211 picture, a damaged file), 80
+  conversions in a row through the app (4 engine recycles, no stall), the watchdog retry (simulated freeze → done on the
+  second try), progress accuracy on a 40-s re-encode (linear, ETA right), mixed selections, "Use for all", custom file
+  names, Delete / Remove during a run, theme switch and welcome screen during a run, ZIP validity (`unzip -t`), and the
+  regression sweeps of all three editors.
+- Not testable here: H.264/HEVC playback of results inside this Chromium (no proprietary codecs; WebView2 has them).
+
+## Earlier request — DONE (2026-10-08, cloud session): three playback bugs
 User: (1) "when I move the playhead to the most extreme left, the video goes black … the only way to resolve that is
 closing the app"; (2) "previewing keeps going black, then back to normal, then black again"; (3) "when I play the audio in
 the audio editor, it also plays the video in the video editor … I don't want either one to control the other".
