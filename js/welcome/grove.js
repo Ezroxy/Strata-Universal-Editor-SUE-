@@ -46,6 +46,7 @@ App.WELCOMES.grove = {
       ...M.map(m => ({ label: m.name, pick: m.id, key: m.key, tip: m.tip, brief: `<b style="--c:${m.color}">${m.name.toUpperCase()}:</b> ${m.desc} ${m.pts.join(', ')}.` })),
       { gap: true },
       { label: 'Load Game', act: 'open', sm: true, tip: api.actions[0].tip, brief: 'Load a saved <b>.strata</b> project and carry on where you left off.' },
+      { label: 'Chop Shop', act: 'convert', sm: true, key: 'Alt+4', tip: api.actions[4].tip, brief: 'Respray any file into a new format: <b>MKV</b> to <b>MP4</b>, <b>MP4</b> to <b>MP3</b>, <b>FLAC</b> to <b>WAV</b>… No questions asked.' },
       { label: 'Options', act: 'prefs', sm: true, key: 'Ctrl+,', tip: api.actions[3].tip, brief: 'Themes, sounds, fonts and the rest of the <b>Preferences</b>.' },
       { label: 'Controls', act: 'shortcuts', sm: true, key: '?', tip: api.actions[2].tip, brief: 'Every keyboard shortcut, in one list. <b>Ctrl+K</b> finds any command by name.' },
       { label: 'Continue', act: 'close', sm: true, key: 'Esc', tip: 'Close the welcome screen and keep working.', brief: 'Back to whatever you were working on. Everything autosaves.' },

@@ -198,7 +198,7 @@ function interfaceSec() {
       note('Tip: press the mouse wheel and drag to move around a timeline in any direction.')),
     group('Start-up & motion',
       App.select({ label: 'Welcome screen', value: S().welcome || 'always', tip: 'When the welcome screen with the three editors appears. Each theme has its own welcome screen.', options: [['first', 'First launch only'], ['always', 'Every time Strata starts'], ['never', 'Never']], onChange: v => set('welcome', v) }),
-      App.select({ label: 'Start in', value: S().startMode || 'last', tip: 'Which editor is open when Strata Studio starts.', options: [['last', 'The editor I used last'], ['video', 'Video'], ['audio', 'Audio'], ['image', 'Image']], onChange: v => set('startMode', v) }),
+      App.select({ label: 'Start in', value: S().startMode || 'last', tip: 'Which editor is open when Strata Studio starts.', options: [['last', 'The editor I used last'], ['video', 'Video'], ['audio', 'Audio'], ['image', 'Image'], ['convert', 'Convert']], onChange: v => set('startMode', v) }),
       toggle('Reduce motion', 'reduceMotion', 'Turns off animations and transitions, including the cross-fade when switching themes.'),
       h('div', { class: 'pref-inline' }, btn({ icon: 'home', label: 'Show welcome screen', cls: 'solid txt sm', title: 'Welcome screen', tip: 'Open the welcome screen now.', onClick: () => { close(); App.showWelcome(); } }),
         btn({ icon: 'keyboard', label: 'Keyboard shortcuts', cls: 'solid txt sm', title: 'Shortcuts', key: '?', tip: 'Every shortcut for the current editor.', onClick: () => { close(); App.showShortcuts(); } }))),

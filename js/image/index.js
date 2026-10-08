@@ -1798,6 +1798,7 @@ function menus() {
       { label: 'Export…', icon: 'download', key: 'Ctrl+Shift+S', tip: 'Save as PNG, JPEG or WebP.', action: I.exportDialog },
       { label: 'Quick export PNG', icon: 'download', tip: 'Instantly downloads a full-size PNG.', action: () => { I.settle(); I.flatten().toBlob(b => App.download(b, (I.doc.name || 'image') + '.png')); } },
       { label: 'Send to Video editor', icon: 'film', tip: 'Places this image on the video timeline at the playhead (as a still for titles, overlays or slideshows). You can also drag its tab onto the timeline.', action: I.sendToVideo },
+      { label: 'Convert files…', icon: 'convert', key: 'Alt+4', tip: 'Opens the Converter: turn pictures into other formats in bulk (HEIC/AVIF → PNG, PNG → JPEG, WebP → PNG, PNG → ICO…).', action: () => { App.setMode('convert'); App.Conv.addFiles(); } },
     ] },
     { label: 'Edit', tip: 'Undo, clipboard and transform commands.', items: () => [
       { label: 'Undo', icon: 'undo', key: 'Ctrl+Z', disabled: I.hIndex <= 0, tip: I.hIndex > 0 ? 'Undo “' + I.history[I.hIndex].label + '”.' : 'Nothing to undo.', action: I.undo },

@@ -61,7 +61,7 @@ App.WELCOMES.paper = {
 @keyframes wp-stamp { to { opacity: .9; transform: rotate(-12deg) scale(1); } }
 .wl-paper .wp-class { margin-top: 10px; border-top: 3px double ${H}; padding-top: 6px; }
 .wl-paper .wp-class h3 { margin: 0 0 6px; text-align: center; font: 700 11px Georgia; letter-spacing: .3em; text-transform: uppercase; }
-.wl-paper .wp-ads { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) 1.25fr; gap: 8px; }
+.wl-paper .wp-ads { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) 1.25fr; gap: 8px; }
 .wl-paper .wp-ad { text-align: left; border: 1px solid ${H}; background: none; padding: 6px 9px 7px; font: 400 12px/1.35 Georgia, serif; color: inherit; transition: background .2s; }
 .wl-paper .wp-ad b { display: block; font: 800 13px 'Playfair Display', Georgia; text-transform: uppercase; letter-spacing: .04em; }
 .wl-paper .wp-ad kbd { font: 700 10.5px 'JetBrains Mono', monospace; }
@@ -118,6 +118,7 @@ App.WELCOMES.paper = {
           <button class="wp-ad" data-act="palette"${api.tip('Command palette', api.actions[1].tip, 'Ctrl+K')}><b>For hire</b>Tireless assistant finds any command by name. Call <kbd>Ctrl K</kbd>.</button>
           <button class="wp-ad" data-act="shortcuts"${api.tip('Shortcuts', api.actions[2].tip, '?')}><b>Lost &amp; found</b>Every keyboard shortcut, in one list. Press <kbd>?</kbd></button>
           <button class="wp-ad" data-act="prefs"${api.tip('Preferences', api.actions[3].tip, 'Ctrl+,')}><b>Redecorate</b>Fifteen themes, sounds and fonts. See Preferences, <kbd>Ctrl ,</kbd></button>
+          <button class="wp-ad" data-act="convert"${api.tip('Convert files', api.actions[4].tip, 'Alt+4')}><b>Exchange</b>Any file traded for any format, no loss. MKV for MP4, FLAC for WAV. <kbd>Alt 4</kbd></button>
           <div class="wp-ad wp-sub"><b>Subscriptions</b><span class="wp-su"></span><button data-act="close"${api.tip('Continue', 'Fold the paper: close the welcome screen and keep working.', 'Esc')}>Fold the paper · Esc</button></div>
         </div></div>
       </div>`;

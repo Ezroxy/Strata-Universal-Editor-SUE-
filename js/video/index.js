@@ -36,6 +36,7 @@ function menus() {
       { sep: true },
       { label: 'Send frame to Image editor', icon: 'image', tip: 'Opens the current frame in the Image tab to paint or retouch it.', action: async () => App.emit('image:open', await O.frameBlob(), 'Frame ' + tc(V.time)) },
       { label: 'Send mix to Audio editor', icon: 'send', tip: 'Mixes down the soundtrack and opens it in the Audio tab for mastering.', action: P.sendMixToAudio },
+      { label: 'Convert files…', icon: 'convert', key: 'Alt+4', tip: 'Opens the Converter: turn any file into another format (MKV → MP4, MP4 → MP3, MOV → GIF…) at full quality.', action: () => { App.setMode('convert'); App.Conv.addFiles(); } },
     ] },
     { label: 'Edit', tip: 'Undo, clipboard and selection.', items: () => (fresh(), [
       { label: 'Undo', icon: 'undo', key: 'Ctrl+Z', disabled: !V.undoStack.length, tip: V.undoStack.length ? 'Undo “' + V.undoStack[V.undoStack.length - 1].label + '”.' : 'Nothing to undo.', action: V.undo },

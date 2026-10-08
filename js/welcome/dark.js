@@ -47,6 +47,9 @@ App.WELCOMES.dark = {
       <div class="wd-foot"></div>`;
     const foot = root.querySelector('.wd-foot');
     foot.append(api.startup(), api.el(`<button data-act="close"${api.tip('Continue', 'Close the welcome screen and keep working where you left off.', 'Esc')}>Continue · Esc</button>`));
+    // keep the startup switch and Continue just below the action buttons, however many rows those wrap to
+    const nav = root.querySelector('nav'), place = () => { foot.style.top = (nav.offsetTop + nav.offsetHeight + 14) + 'px'; };
+    place(); api.on(window, 'resize', place); api.after(60, place);
     const S = api.canvas(root.querySelector('canvas')), ctx = S.ctx;
     const labels = [...root.querySelectorAll('.wd-lab')];
     // film grain tile + fixed sediment specks

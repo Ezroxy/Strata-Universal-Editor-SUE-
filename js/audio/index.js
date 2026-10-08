@@ -782,6 +782,7 @@ function menus() {
       { label: 'Export selection…', icon: 'download', disabled: () => !A.sel, tip: 'Export only the selected time range.', action: () => A.exportDialog(true) },
       { label: 'Export regions as files…', icon: 'flag', disabled: () => !A.markers.some(m => m.t1 != null), tip: 'Saves every region as its own file, named after the region — split a recording into songs, chapters or takes in one go.', action: A.exportRegions },
       { label: 'Send mix to Video editor', icon: 'film', tip: 'Adds the mixdown to the Video tab’s media bin — perfect for soundtracks and cleaned-up voice-overs.', action: A.sendToVideo },
+      { label: 'Convert files…', icon: 'convert', key: 'Alt+4', tip: 'Opens the Converter: turn any sound or video into another format (FLAC → MP3, MKV → WAV, WAV → AAC…) at full quality.', action: () => { App.setMode('convert'); App.Conv.addFiles(); } },
     ] },
     { label: 'Edit', tip: 'Cut, copy, paste and selection commands.', items: () => [
       { label: 'Undo', icon: 'undo', key: 'Ctrl+Z', disabled: !A.undoStack.length, tip: A.undoStack.length ? 'Undo “' + A.undoStack[A.undoStack.length - 1].label + '”.' : 'Nothing to undo.', action: A.undo },

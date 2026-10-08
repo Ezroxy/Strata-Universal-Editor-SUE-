@@ -134,6 +134,7 @@ function mediaItem(m) {
     { sep: true },
     m.audioBuffer ? { label: 'Open in Audio editor', icon: 'wave', tip: 'Loads this file\'s sound into the Audio tab.', action: () => { const ab = m.audioBuffer; App.emit('audio:open', { channels: Array.from({ length: ab.numberOfChannels }, (_, i) => ab.getChannelData(i).slice()), sampleRate: ab.sampleRate, name: m.name }); } } : null,
     m.type === 'image' ? { label: 'Open in Image editor', icon: 'image', tip: 'Edit or paint on this picture in the Image tab.', action: () => App.emit('image:open', m.file, m.name) } : null,
+    m.file ? { label: 'Convert to another format…', icon: 'convert', tip: 'Sends this file to the Converter (e.g. MKV → MP4, or take the sound out as MP3).', action: () => App.Conv.add([m.file instanceof File ? m.file : new File([m.file], m.name, { type: m.file.type })]) } : null,
     { label: 'Remove from project', icon: 'trash', tip: 'Deletes this media and every clip that uses it.', action: async () => {
       const n = V.clips.filter(c => c.mediaId === m.id).length;
       if (n && !(await App.confirm('Remove media', `“${m.name}” is used by ${n} clip(s) on the timeline. Remove it and those clips?`, 'Remove'))) return;

@@ -36,6 +36,13 @@ const ICONS = {
   folder: S(`${shadow}<path d="M3 8.5a1.5 1.5 0 0 1 1.5-1.5h7l2 2.2h13a1.5 1.5 0 0 1 1.5 1.5V26H3z" fill="url(#a)" stroke="#b98a1e" stroke-width=".8"/>
     <path d="M2 13.2a1.2 1.2 0 0 1 1.2-1.2h25.6a1.2 1.2 0 0 1 1.2 1.4l-1.7 12.6H3.6z" fill="url(#f)" stroke="#c69a2c" stroke-width=".8"/><path d="M3.4 13.5h25.2" stroke="#fff6cf" stroke-width="1"/>`,
     lg('a', [[0, '#f6d26b'], [1, '#e3a92a']]) + lg('f', [[0, '#fff1a8'], [.5, '#fbd970'], [1, '#f0bb3e']])),
+  convert: S(`${shadow}<path d="M2.5 3.5h9l3.5 3.5v12.5H2.5z" fill="#fff" stroke="#7a889c" stroke-width=".8"/><path d="M11.5 3.5V7H15" fill="#dfe6ef" stroke="#7a889c" stroke-width=".8"/>
+    <rect x="4.5" y="9.5" width="8" height="1.6" fill="#3a78d8"/><rect x="4.5" y="12.5" width="6" height="1.6" fill="#3a78d8"/>
+    <path d="M16.5 11.5h9l3.5 3.5v12.5H16.5z" fill="#fff" stroke="#7a889c" stroke-width=".8"/><path d="M25.5 11.5V15H29" fill="#efe3d6" stroke="#7a889c" stroke-width=".8"/>
+    <rect x="18.5" y="18" width="8" height="1.6" fill="#e2802a"/><rect x="18.5" y="21" width="6" height="1.6" fill="#e2802a"/>
+    <path d="M13 3.2c5.2-1.6 10 .8 11.6 6.2l1.9-.9-1.5 5.3-4.9-2.6 2-.8c-1.3-3.6-4.6-5.4-8.6-4.5z" fill="url(#q)" stroke="#1d6b18" stroke-width=".6"/>
+    <path d="M18.5 29.3c-5.2 1.6-10-.8-11.6-6.2l-1.9.9 1.5-5.3 4.9 2.6-2 .8c1.3 3.6 4.6 5.4 8.6 4.5z" fill="url(#q2)" stroke="#123f9c" stroke-width=".6"/>`,
+    lg('q', [[0, '#b6f07a'], [1, '#2f9c25']]) + lg('q2', [[0, '#8fc4ff'], [1, '#1d5fd0']])),
   help: S(`${shadow}<circle cx="16" cy="15.5" r="12" fill="url(#h)" stroke="#123f9c" stroke-width=".8"/><ellipse cx="16" cy="9.5" rx="8.5" ry="5" fill="#fff" opacity=".35"/>
     <path d="M12 12.2c0-2.6 1.9-4.3 4.3-4.3 2.5 0 4.2 1.6 4.2 3.7 0 3.2-3.5 3.2-3.5 6.1h-3c0-4 3.3-4.1 3.3-6 0-.8-.5-1.3-1.2-1.3-.8 0-1.2.6-1.2 1.8z" fill="#fff"/><circle cx="15.5" cy="21.6" r="1.9" fill="#fff"/>`,
     rg('h', [[0, '#7bb8ff'], [.7, '#1f62d9'], [1, '#0d3fa6']])),
@@ -167,8 +174,8 @@ function paintWalls() {
 }
 
 /* ---------- windows: one per panel ---------- */
-const MODES = [['video', 'Strata Video', 'Edit movies on a timeline'], ['audio', 'Strata Audio', 'Record, clean up and mix sound'], ['image', 'Strata Image', 'Paint and retouch pictures']];
-const docName = id => id === 'video' ? App.V && App.V.name : id === 'audio' ? App.A && App.A.name : App.I && App.I.doc && App.I.doc.name;
+const MODES = [['video', 'Strata Video', 'Edit movies on a timeline'], ['audio', 'Strata Audio', 'Record, clean up and mix sound'], ['image', 'Strata Image', 'Paint and retouch pictures'], ['convert', 'Strata Convert', 'Change any file into any format']];
+const docName = id => id === 'video' ? App.V && App.V.name : id === 'audio' ? App.A && App.A.name : id === 'image' ? App.I && App.I.doc && App.I.doc.name : App.Conv && App.Conv.items.length ? App.Conv.items.length + ' file' + (App.Conv.items.length > 1 ? 's' : '') : '';
 const winTitle = id => { const m = MODES.find(x => x[0] === id); const n = docName(id); return (n ? n + ' - ' : '') + m[1]; };
 // kind: main (the editor's own window), side (can be hidden), core (always there), tool (narrow, close button only)
 const PANELS = {
@@ -177,6 +184,7 @@ const PANELS = {
   'a-top': [() => winTitle('audio'), 'audio', 'main'], 'a-main': ['Tracks', 'music', 'core'], 'a-side': ['Effects', 'control', 'side', 'Effects panel'], 'a-foot': ['Selection & Levels', 'sound', 'core'],
   'i-top': [() => winTitle('image'), 'image', 'main'], 'i-opts': ['Tool Options', 'control', 'core'], 'i-tools': ['', 'image', 'tool'],
   'i-stagewrap': [() => (App.I && App.I.doc && App.I.doc.name || 'untitled') + ' (canvas)', 'pictures', 'core'], 'i-side': ['Layers', 'docs', 'side', 'Side panel'], 'i-bottom': ['Colors', 'display', 'core'],
+  'c-top': [() => winTitle('convert'), 'convert', 'main'], 'c-queue': ['Files to Convert', 'docs', 'core'], 'c-side': ['Convert To', 'control', 'side', 'Settings panel'], 'c-foot': ['Status', 'display', 'core'],
 };
 const panelInfo = p => { for (const c of p.classList) if (PANELS[c]) return [c, ...PANELS[c]]; return null; };
 /** which part of a window's title bar the pointer is on: 'min' | 'max' | 'close' | 'cap' | null */
@@ -347,7 +355,7 @@ function build() {
   document.addEventListener('keydown', el.onKey, true);
   try { if (localStorage.getItem('strata.xp.tight') === '1') root.classList.add('xp-tight'); } catch {}
   // icons for the taskbar buttons, tray and balloons; window caption buttons in every state
-  for (const k of ['video', 'audio', 'image', 'tips', 'run', 'keyboard', 'display', 'control', 'floppy', 'sound', 'info', 'warn', 'error', 'ok']) root.style.setProperty('--xpi-' + k, cssUrl(ICONS[k]));
+  for (const k of ['video', 'audio', 'image', 'convert', 'tips', 'run', 'keyboard', 'display', 'control', 'floppy', 'sound', 'info', 'warn', 'error', 'ok']) root.style.setProperty('--xpi-' + k, cssUrl(ICONS[k]));
   root.style.setProperty('--xp-capbtns', cssUrl(CAP_BTNS(true)));
   root.style.setProperty('--xp-capbtns-off', cssUrl(CAP_BTNS(false)));
   for (const k of ['min', 'max', 'close']) root.style.setProperty('--xp-capbtns-' + k, cssUrl(CAP_BTNS(true, k)));

@@ -517,6 +517,9 @@ let renderPending = false;
 T.renderSoon = () => { if (renderPending) return; renderPending = true; requestAnimationFrame(() => { renderPending = false; T.render(); }); };
 T.render = () => {
   if (!T.body) return;
+  // rebuilding the rows empties the scroller for a moment, which made the browser jump back to the top tracks
+  // after every edit (e.g. dropping a sound effect on a lower audio track): keep the view where it was
+  const keepX = T.body.scrollLeft, keepY = T.body.scrollTop;
   const viewW = Math.max(100, T.body.clientWidth - HEAD);
   const dur = V.duration();
   const contentW = Math.max(viewW, (dur + 30) * V.pps, 600);
@@ -544,6 +547,8 @@ T.render = () => {
   } else T.rangeEl.style.display = 'none';
   T.durLabel.textContent = tc(dur);
   T.emptyHint.style.display = V.clips.length ? 'none' : '';
+  if (T.body.scrollTop !== keepY) T.body.scrollTop = keepY;
+  if (T.body.scrollLeft !== keepX) T.body.scrollLeft = keepX;
   T.updatePlayhead();
   T.drawRuler();
 };
