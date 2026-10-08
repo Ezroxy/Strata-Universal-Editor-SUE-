@@ -15,58 +15,105 @@ App.on('setting', k => { if (k === 'previewQuality' && V.resizeCanvas) V.resizeC
 
 /* ---------- video element pool (one element per clip) ---------- */
 const vids = new Map();
+const POOL = 8;                // loaded elements kept for clips that are off screen (each one holds a decoder)
+const unload = el => { el.pause(); el.removeAttribute('src'); el.load(); };
 V.videoEl = c => {
   let el = vids.get(c.id);
-  if (el && el._mediaId === c.mediaId) return el;
-  if (el) { el.pause(); el.removeAttribute('src'); el.load(); }
+  if (el && el._mediaId === c.mediaId) { el._used = performance.now(); return el; }
+  if (el) unload(el);
   const m = V.getMedia(c.mediaId);
   el = document.createElement('video');
   el.muted = true; el.playsInline = true; el.preload = 'auto';
-  el._mediaId = c.mediaId; el._pending = null;
+  el._mediaId = c.mediaId; el._used = performance.now(); el._want = null; el._lag = 0.1;
   el.src = m.url;
+  // the frame a seek lands on is drawn by the next render, which then asks for the newest position
   el.addEventListener('seeked', () => {
-    if (el._pending != null) {
-      const p = el._pending; el._pending = null;
-      if (Math.abs(el.currentTime - p) > 0.01) { el.currentTime = p; return; }
-    }
+    if (el._seekAt) el._lag = clamp(0.7 * el._lag + 0.3 * (performance.now() - el._seekAt) / 1000, 0.02, 0.5);
+    el._seekAt = 0; el._waitAt = 0;
     V.requestRender();
   });
-  el.addEventListener('loadeddata', () => V.requestRender());
+  el.addEventListener('loadeddata', () => { el._waitAt = 0; V.requestRender(); });
+  el.addEventListener('error', () => V.requestRender());
   vids.set(c.id, el);
   return el;
 };
+const seekTo = (el, t) => { el._want = t; el._seekAt = performance.now(); el.currentTime = t; };
+/* A <video> that fails, or stays unable to show a picture, is swapped for a fresh one: before, a decoder that
+   gave up (e.g. after a burst of seeks while dragging the playhead) left the preview black until a restart. */
+const STUCK_MS = 8000;
+const heals = new Map();
+V.videoReady = c => {
+  let el = V.videoEl(c);
+  const now = performance.now();
+  if (!el.error && !el.seeking && el.readyState >= 2) { el._waitAt = 0; heals.delete(c.id); return true; }
+  if (!el._waitAt) el._waitAt = now;
+  const hl = heals.get(c.id) || { n: 0, next: 0 };
+  // a slow file only gets two reloads for hanging (reloading would never let a very slow seek finish)
+  if ((el.error || (now - el._waitAt > STUCK_MS && hl.n < 2)) && now >= hl.next) {
+    heals.set(c.id, { n: hl.n + 1, next: now + 2000 * 2 ** Math.min(hl.n, 5) });
+    unload(el); vids.delete(c.id);
+    el = V.videoEl(c);
+  }
+  return false;
+};
+/** Steer a clip's <video> towards source time st. While playing, small drift is corrected by nudging the
+    speed a few percent (a seek would stall the picture); only a big gap is closed with a jump. */
 V.syncVideo = (el, c, st, m) => {
-  const fps = V.project.fps;
+  if (el.error) return;
+  const fps = V.project.fps, now = performance.now();
   const maxT = Math.max(0, (m.duration || 0) - 0.04);
   const hold = st > maxT;
   st = clamp(st, 0, maxT);
   const live = V.playing && V.rate > 0 && !hold;
   if (live) {
     const pr = clamp(c.speed * V.rate, 0.0625, 16);
-    if (Math.abs(el.playbackRate - pr) > 1e-3) el.playbackRate = pr;
     if (el.paused) {
-      if (Math.abs(el.currentTime - st) > 0.05) el.currentTime = st;
+      if (Math.abs(el.currentTime - st) > 0.1 * Math.max(1, pr)) seekTo(el, st);
+      el.playbackRate = pr; el._want = null; el._grace = now + 400;
       const p = el.play(); if (p) p.catch(() => {});
-    } else if (Math.abs(el.currentTime - st) > 0.25 * Math.max(1, pr)) el.currentTime = st;
+      return;
+    }
+    if (el.seeking || now < el._grace) return;
+    const drift = el.currentTime - st;   // > 0: the picture is ahead of the sound, < 0: behind
+    if (Math.abs(drift) > Math.max(0.6, 0.35 * pr)) {
+      seekTo(el, Math.min(maxT, st + el._lag * pr));   // land a little ahead, so it doesn't trail behind again
+      el.playbackRate = pr; el._grace = now + 500;
+    } else {
+      const want = Math.abs(drift) < 0.025 ? pr : clamp(pr * clamp(1 - drift * 1.5, 0.8, 1.25), 0.0625, 16);
+      if (Math.abs(el.playbackRate - want) > 0.01 * pr) el.playbackRate = want;
+    }
   } else {
     if (!el.paused) el.pause();
-    if (el.seeking) { el._pending = st; return; }
-    if (Math.abs(el.currentTime - st) > 0.45 / fps) el.currentTime = st;
+    if (el.seeking) return;   // 'seeked' renders again, and that render asks for the newest position
+    if (el._want != null && Math.abs(el._want - st) < 1e-4) return;   // already asked for exactly this
+    if (Math.abs(el.currentTime - st) > 0.45 / fps) seekTo(el, st);
   }
 };
-V.pauseInactive = active => { for (const [id, el] of vids) if (!active.has(id) && !el.paused) el.pause(); };
+V.pauseInactive = active => {
+  const idle = [];
+  for (const [id, el] of vids) {
+    if (active.has(id)) continue;
+    if (!el.paused) el.pause();
+    idle.push([id, el]);
+  }
+  // let go of the least recently shown ones, so a long edit with many cuts never runs out of decoders
+  if (idle.length > POOL) {
+    idle.sort((a, b) => a[1]._used - b[1]._used);
+    for (const [id, el] of idle.slice(0, idle.length - POOL)) { unload(el); vids.delete(id); }
+  }
+};
 V.preroll = t => {
   for (const c of V.clips) {
     if (c.kind !== 'video' || c.start <= t || c.start > t + 1.2) continue;
     const tr = V.getTrack(c.trackId);
     if (!tr || tr.hidden) continue;
     const el = V.videoEl(c);
-    if (el.paused && !el.seeking && Math.abs(el.currentTime - c.in) > 0.08) el.currentTime = c.in;
+    if (el.paused && !el.seeking && !el.error && Math.abs(el.currentTime - c.in) > 0.08) seekTo(el, c.in);
   }
 };
 V.gcVideos = () => {
   for (const [id, el] of vids) {
-    if (!V.getClip(id)) { el.pause(); el.removeAttribute('src'); el.load(); vids.delete(id); }
+    if (!V.getClip(id)) { unload(el); vids.delete(id); heals.delete(id); }
   }
 };
 
@@ -187,7 +234,7 @@ V.renderMix = async (t0, t1, sr = 48000) => {
 /* short audio grains while scrubbing */
 let lastScrub = 0;
 V.scrubAudio = t => {
-  if (!App.settings.scrub || V.playing) return;
+  if (!App.settings.scrub || V.playing || App.active !== 'video') return;
   const now = performance.now();
   if (now - lastScrub < 55) return;
   lastScrub = now;
@@ -211,6 +258,7 @@ V.playRange = () => {
   return [a, Math.max(a + V.frame(), b)];
 };
 V.play = (rate) => {
+  if (App.active !== 'video') return;   // only the editor on screen plays; the Audio editor has its own transport
   const ac = App.ac();
   if (rate != null) V.rate = rate;
   if (V.playing) { V.restartClock(); return; }

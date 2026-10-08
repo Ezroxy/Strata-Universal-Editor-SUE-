@@ -240,9 +240,13 @@ V.drawClip = (ctx, c, t, opt = {}) => {
       el = opt.vids.get(c.id);
       if (!el) return;
       if (el.src && el.w) { src = el.src; sw = el.w; sh = el.h; }
-    } else { el = V.videoEl(c); V.syncVideo(el, c, c.in + (t - c.start) * c.speed, m); if (el.seeking || el.readyState < 2) V._retry = true; }
+    } else {
+      el = V.videoEl(c);
+      if (!opt.synced) V.syncVideo(el, c, c.in + (t - c.start) * c.speed, m);
+      if (el.seeking || el.readyState < 2) V._retry = true;
+    }
     if (!src) {
-      if (el.readyState < 2) return;
+      if (el.readyState < 2 || el.error) return;
       src = el; sw = el.videoWidth; sh = el.videoHeight;
     }
   } else if (c.kind === 'image') {
@@ -412,8 +416,36 @@ V.activeAt = t => {
   }
   return out;
 };
+const HOLD_MS = 10000;   // longer than player.js STUCK_MS, so a reloaded video gets time to show up
+let holdAt = 0, shownSize = '';
+// a video that is loading or seeking (not one that has failed: that one just shows nothing)
+const waits = c => { if (c.kind !== 'video') return false; const m = V.getMedia(c.mediaId); return !!m && !m.loading && !V.videoReady(c) && !V.videoEl(c).error; };
+const syncActive = (list, t) => {
+  for (const { c } of list) {
+    if (c.kind !== 'video') continue;
+    const m = V.getMedia(c.mediaId);
+    if (m && !m.loading) V.syncVideo(V.videoEl(c), c, c.in + (t - c.start) * c.speed, m);
+  }
+};
 V.renderFrame = (t, ctx = V.ctx, opts = {}) => {
   const P = V.project;
+  const list = V.activeAt(t);
+  // The preview draws each video as it is right now and only then steers it to the new time, and while a
+  // video is seeking or loading (it has no picture to give) the last frame stays up instead of flashing
+  // black. The hold ends as soon as every video has caught up; a video stuck for longer is reloaded.
+  const live = ctx === V.ctx && !opts.vids;
+  if (live) {
+    const waiting = list.some(({ c }) => waits(c));
+    const size = ctx.canvas.width + 'x' + ctx.canvas.height;
+    if (!waiting) holdAt = 0;
+    else if (!holdAt) holdAt = performance.now();
+    if (waiting && !opts.noKey && shownSize === size && performance.now() - holdAt < HOLD_MS) {
+      syncActive(list, t);
+      if (!V.playing) setTimeout(V.requestRender, 80);
+      return;
+    }
+    shownSize = size;
+  }
   const s = opts.scale ?? V.previewScale;
   V._rs = s;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -423,13 +455,14 @@ V.renderFrame = (t, ctx = V.ctx, opts = {}) => {
   ctx.imageSmoothingQuality = 'high';
   if (!opts.vids) { V.boxes.clear(); V._retry = false; }
   const active = new Set();
-  for (const { c, held } of V.activeAt(t)) {
-    V.drawClip(ctx, c, t, { held, vids: opts.vids, noKey: opts.noKey });
+  for (const { c, held } of list) {
+    V.drawClip(ctx, c, t, { held, vids: opts.vids, noKey: opts.noKey, synced: live });
     active.add(c.id);
   }
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   V._rs = V.previewScale;
   if (opts.vids) return;
+  if (live) syncActive(list, t);
   V.activeIds = active;
   V.pauseInactive && V.pauseInactive(active);
   V.drawOverlay && V.drawOverlay();

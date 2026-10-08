@@ -56,6 +56,7 @@ const themeMenu = () => [
 
 App.setMode = id => {
   if (App.active === id) return;
+  App.endDrags();
   const prev = App.active && App.modules[App.active];
   if (prev && prev.hide) prev.hide();
   if (App.active) App.sound && App.sound('switch', MODES.findIndex(m => m.id === id) / 2);
@@ -120,6 +121,16 @@ const showSettings = (section) => App.showPrefs(section);
 /* ---------- welcome: one screen per theme, see core/welcome.js and js/welcome/ ---------- */
 const showWelcome = () => App.showWelcome();
 App.openPalette = openPalette;
+
+/* ---------- drags that lose their release ----------
+   Editors follow a drag with pointermove/pointerup listeners on the window. If the button is let go where the
+   page never hears it (outside the window, or the system takes over the pointer), the drag would stay live and
+   keep steering its editor — even from another tab (e.g. a playhead drag restarting the video when you click
+   Play in the Audio editor). So: end every open drag on pointercancel, when the window loses focus, and when
+   switching editors. Only drags in progress listen for pointerup on the window, so nothing else reacts. */
+App.endDrags = () => dispatchEvent(new PointerEvent('pointerup'));
+addEventListener('pointercancel', App.endDrags);
+addEventListener('blur', App.endDrags);
 
 /* ---------- keyboard routing ---------- */
 document.addEventListener('keydown', e => {

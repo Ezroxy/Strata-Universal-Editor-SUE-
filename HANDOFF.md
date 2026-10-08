@@ -62,7 +62,8 @@ model behind Auto captions. You can use it in the browser or as a native Windows
   - Autosave is flushed when the window closes.
 
 ### In progress
-- Nothing is half-done. The last task (the Windows XP Dreamcore theme) is finished and tested in headless Chromium. **The Windows exe has not been rebuilt since** (the work was done in a Linux cloud session), so run
+- Nothing is half-done. The last task (three video-playback bugs, see "Latest request" below) is finished and tested in
+  headless Chromium. **The Windows exe has not been rebuilt since** (the work was done in a Linux cloud session), so run
   `build-desktop.bat` once on Windows.
 - `qa/harness.js` is a temporary QA script that runs every menu command in the browser preview. It isn't part of the app.
 
@@ -196,7 +197,52 @@ speech-to-text model for auto-captioning videos." The user picked **Whisper Base
 - Exe: smoke-tested after the user closed their copy (live recording via the blob-URL AudioWorklet works under COEP; the xfer
   receivers are registered). The parked old build in `%TEMP%\claude\old-builds\` was deleted. The Desktop exe is current.
 
-## Latest request — DONE (2026-10-07, cloud session): Windows XP Dreamcore theme
+## Latest request — DONE (2026-10-08, cloud session): three playback bugs
+User: (1) "when I move the playhead to the most extreme left, the video goes black … the only way to resolve that is
+closing the app"; (2) "previewing keeps going black, then back to normal, then black again"; (3) "when I play the audio in
+the audio editor, it also plays the video in the video editor … I don't want either one to control the other".
+
+### Causes and fixes
+- **Black preview (1, 2):** `V.renderFrame` cleared the canvas every frame and `drawClip` skipped any `<video>` that was
+  seeking or not decoded yet (`readyState < 2`, which Chrome sets at the start of every seek). So scrubbing was black
+  nearly the whole time, and playback blinked black on every drift re-seek (the old tolerance, 0.25 s, re-seeked again and
+  again on heavy files). The old `seeked` handler also chased the newest target immediately, so the frame a seek landed on
+  was never drawn. And an element that failed or hung stayed cached per clip forever, hence "only a restart fixes it".
+  - `js/video/render.js` — for the live preview (`ctx === V.ctx`, no `opts.vids`), `renderFrame` now draws each video as it
+    is, then steers it (`syncActive` after drawing; `drawClip` gets `opt.synced`). While an on-screen video is loading or
+    seeking, the last frame stays up (hold) until it catches up (`HOLD_MS` = 10 s cap; not used with `noKey` or after a
+    canvas resize). Export (`opts.vids`) is unchanged.
+  - `js/video/player.js`:
+    - `seeked` just re-renders, and `syncVideo` never queues a second seek while one is in flight (`_want` stops a seek
+      loop on positions the element can't land on).
+    - While playing, drift under ~0.6 s is corrected by nudging `playbackRate` (±20 %), and only bigger gaps jump. The jump
+      lands ahead by the measured seek time (`_lag`), with a 400–500 ms grace after play and seek.
+    - `V.videoReady(c)` replaces an element that errors at once, or one that can't show a picture for 8 s (`STUCK_MS`, at
+      most twice). It backs off, and the counters reset when the element recovers.
+    - `pauseInactive` unloads the least recently used off-screen elements beyond `POOL` (8), so edits with many cuts
+      don't run out of decoders.
+- **Editors controlling each other (3):** every drag follows `pointermove`/`pointerup` on the window. When the release was
+  lost (let go outside the window, `pointercancel`), the ruler drag stayed live. Its mouse moves kept seeking the video
+  from the Audio editor, and the next click anywhere (e.g. Audio's Play) ran its `up()`, which resumes video playback.
+  - `js/main.js` — `App.endDrags()` sends a synthetic `pointerup` to the window on `pointercancel`, window `blur` and every
+    `setMode`. Only drags in progress listen there.
+  - `V.play`, `V.scrubAudio` (video) and `A.play` (audio) do nothing unless their editor is `App.active`. Switching tabs
+    still pauses the editor you leave.
+
+### Tested (headless Chromium; generated VP8/VP9 WebMs incl. a 1080p long-GOP file cut into 5 clips)
+- Before → after, black preview frames:
+  - scrubbing: 241/241 → 0;
+  - 1080p playback: 147 → 0;
+  - fast drag past the far left across 5 clips: 35 → 0.
+- Scrubbing still updates every ~60 ms, and the frame after a scrub matches a direct seek.
+- A broken element (bad src) recovers in < 0.5 s; a hung one keeps its last frame and is reloaded after 8 s.
+- The stale-drag scenario: in the old code, clicking Audio's Play also started the video; now each editor only plays itself.
+- Every menu command in all three editors: no errors. Exports are unchanged (same file sizes), and the real-time export
+  fallback has no black frames.
+- Not tested: H.264/HEVC files and the WebView2 hardware decoders (this Chromium has no H.264). The fixes don't depend on
+  the codec, but a check in the exe with the user's own footage is worthwhile.
+
+## Earlier request — DONE (2026-10-07, cloud session): Windows XP Dreamcore theme
 User: "make the Windows XP theme look exactly like Windows XP, everything … make two or three drafts". Three drafts were
 shown (Luna program window, every panel a window on the desktop, Dreamcore); the user picked **Dreamcore**, so the XP theme
 (id `xp`, name "Windows XP Dreamcore") is now only that look. The draft commit is in the history if the others are wanted.
@@ -507,6 +553,9 @@ snapDefault rippleDefault stillDur audioView zeroSnapDefault. User fonts: Indexe
   - multiple document tabs, layer masks (white + alpha), live text layers, free transform, healing brush
   - selection tools: subject, colour range, feather and the rest
   - autosave to IndexedDB under `image:docs` and `image:L:<id>:<ver>`
+- **Video preview** (`js/video/player.js`, `render.js`): one muted `<video>` per clip (pool, LRU-trimmed). Sound is Web
+  Audio on the shared `App.ac()` context, and the transport clock is `ac.currentTime`. The preview draws first and then
+  steers the elements, holding the last frame while one seeks (see "three playback bugs" above).
 - **Desktop launcher**: `desktop/src/main.rs`.
   - Serves the embedded files at `https://strata.localhost/`.
   - Downloads go to Downloads, with an in-app toast and "Show in folder".
